@@ -5,13 +5,13 @@
  */
 package com.starturn.engine.util.modelmapping;
 
-import com.starturn.database.entities.Bank;
 import com.starturn.database.entities.ContributionFrequency;
 import com.starturn.database.entities.EsusuGroup;
 import com.starturn.database.entities.MemberProfile;
 import com.starturn.database.query.factory.ServiceQueryFactory;
 import com.starturn.engine.models.EsusuGroupDTO;
 import com.starturn.engine.models.MemberProfileDTO;
+import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.apache.logging.log4j.LogManager;
@@ -32,12 +32,6 @@ public class ModelMapping {
 
         if (memberProfile != null) {
 
-            Bank bank;
-            if (memberProfile.getBank() != null) {
-                bank = (Bank) ServiceQueryFactory.getDaoServiceQuery().getEntity(Bank.class, memberProfile.getBank().getId());
-                dto.setBankId(bank.getId());
-            }
-
             dto.setId(memberProfile.getId());
             dto.setUsername(memberProfile.getUsername());
             dto.setName(memberProfile.getName());
@@ -46,12 +40,13 @@ public class ModelMapping {
             dto.setAccountClosed(memberProfile.getAccountClosed());
             dto.setAccountSuspended(memberProfile.getAccountSuspended());
             dto.setLocked(memberProfile.getLocked());
-            dto.setBankAccountNumber(memberProfile.getBankAccountNumber());
-            dto.setBvn(memberProfile.getBvn());
             dto.setAccpetedTermsCondition(memberProfile.getAccpetedTermsCondition());
             dto.setCreationDate(formatter.format(memberProfile.getCreationDate()));
             dto.setGender(memberProfile.getGender());
-            dto.setLastLoginDate(formatter.format(memberProfile.getLastLoginDate()));
+            if (memberProfile.getLastLoginDate() != null) {
+                dto.setLastLoginDate(formatter.format(memberProfile.getLastLoginDate()));
+            }
+
             dto.setActive(memberProfile.getActive());
 
         }
@@ -64,12 +59,6 @@ public class ModelMapping {
         MemberProfile memberProfile = new MemberProfile();
 
         if (dto != null) {
-
-            Bank bank = null;
-
-            if (dto.getBankId() != null && dto.getBankId() > 0) {
-                bank = (Bank) ServiceQueryFactory.getDaoServiceQuery().getEntity(Bank.class, dto.getBankId());
-            }
 
             if (dto.getId() != null && dto.getId() > 0 && ServiceQueryFactory.getDaoServiceQuery().
                     checkObjectExists(MemberProfile.class, dto.getId())) {
@@ -84,19 +73,10 @@ public class ModelMapping {
             memberProfile.setAccountClosed(dto.getAccountClosed());
             memberProfile.setAccountSuspended(dto.getAccountSuspended());
             memberProfile.setLocked(dto.getLocked());
-            memberProfile.setBankAccountNumber(dto.getBankAccountNumber());
-            memberProfile.setBvn(dto.getBvn());
             memberProfile.setAccpetedTermsCondition(dto.getAccpetedTermsCondition());
-            memberProfile.setCreationDate(formatter.parse(dto.getCreationDate()));
+            memberProfile.setCreationDate(!"".equals(dto.getCreationDate()) ? formatter.parse(dto.getCreationDate()) : new Date());
             memberProfile.setGender(dto.getGender());
-            memberProfile.setLastLoginDate(formatter.parse(dto.getLastLoginDate()));
             memberProfile.setActive(dto.getActive() != null ? dto.getActive() : false);
-            memberProfile.setBank(bank);
-            memberProfile.setAtmCardExpiry(dto.getAtmCardExpiry());
-            memberProfile.setAtmCardNo(dto.getAtmCardNo());
-            memberProfile.setAtmCardType(dto.getAtmCardType());
-            memberProfile.setAtmCvv(dto.getAtmCvv());
-            memberProfile.setAtmPin(dto.getAtmPin());
         }
 
         return memberProfile;
@@ -144,13 +124,15 @@ public class ModelMapping {
 
                 esusuGroup.setCode(dto.getCode());
                 esusuGroup.setContributionAmount(dto.getContributionAmount());
+                esusuGroup.setMonthlyCollectionAmount(dto.getContributionAmount().multiply(new BigDecimal(dto.getNumberOfContributors())));
                 esusuGroup.setCreatedByUsername(dto.getCreatedByUsername());
                 esusuGroup.setCreationDate((dto.getCreationDate() != null && !dto.getCreationDate().trim().isEmpty()) ? formatter.parse(dto.getCreationDate()) : new Date());
                 esusuGroup.setDescription(dto.getDescription());
-                esusuGroup.setMinAmountLockedInMemberAccount(esusuGroup.getMinAmountLockedInMemberAccount());
-                esusuGroup.setName(esusuGroup.getName());
-                esusuGroup.setNumberOfContributors(esusuGroup.getNumberOfContributors());
+                esusuGroup.setMinAmountLockedInMemberAccount(dto.getMinAmountLockedInMemberAccount());
+                esusuGroup.setName(dto.getName());
+                esusuGroup.setNumberOfContributors(dto.getNumberOfContributors());
                 esusuGroup.setStartDate(formatter.parse(dto.getStartDate()));
+                esusuGroup.setCircleCompleted(dto.getCircleEnded() != null ? dto.getCircleEnded() : false);
             }
         } catch (Exception ex) {
             logger.error("An error occured while converting from esusu group entity to esusu group dto. ", ex);

@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author Administrator
  */
 @RestController
-@RequestMapping("/starturn/api/v1/nonauth")
+@RequestMapping("/starturn/v1/nonauth")
 @Api(value = "Request API calls")
 public class NonAuthController {
 

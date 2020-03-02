@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.starturn.engine.config;
+package com.starturn.engine.security;
 
 import java.io.IOException;
 import javax.servlet.Filter;
@@ -19,7 +19,7 @@ import org.springframework.stereotype.Component;
 
 /**
  *
- * @author Administrator
+ * @author akinw
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)

@@ -21,10 +21,9 @@ import lombok.ToString;
 @ToString
 public class MemberProfileDTO {
 
-    @Min(0)
+    //@Min(0)
     @NotNull(message = "id cannot be null")
     private Integer id;
-    private Integer bankId;
     @NotBlank(message = "username must be provided")
     private String username;
     @NotBlank(message = "name must be provided")
@@ -52,11 +51,5 @@ public class MemberProfileDTO {
     private String creationDate;
     private String lastLoginDate;
     private String lastLoginTime;
-    private String bankAccountNumber;
-    private String bvn;
-    private String atmCardNo;
-    private String atmCardExpiry;
-    private Integer atmCvv;
-    private Integer atmPin;
-    private String atmCardType;
+    
 }

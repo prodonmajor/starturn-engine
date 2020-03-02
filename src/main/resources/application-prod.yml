@@ -1,0 +1,20 @@
+## YAML Template.
+---
+scheduler:
+    pool-size: 3
+    traditional:
+        delay:
+            initial: 5000
+            fixed: 60000
+
+server:
+    port: 8080
+
+# File Storage Properties
+# All files uploaded through the REST API will be stored in this directory
+file:
+    upload-dir: /starturn/uploads
+    profile-pic-dir: /starturn/pictures
+    
+token:
+    validity: 2

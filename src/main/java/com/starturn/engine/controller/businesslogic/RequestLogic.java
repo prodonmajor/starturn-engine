@@ -8,11 +8,14 @@ package com.starturn.engine.controller.businesslogic;
 import com.starturn.database.entities.ContributionFrequency;
 import com.starturn.database.entities.EsusuGroup;
 import com.starturn.database.entities.EsusuGroupInvites;
+import com.starturn.database.entities.EsusuGroupMembers;
 import com.starturn.database.entities.MemberProfile;
 import com.starturn.database.entities.UserToken;
 import com.starturn.database.query.DaoServiceQuery;
 import com.starturn.database.query.MemberServiceQuery;
+import com.starturn.engine.controller.businesslogic.async.AsyncRunner;
 import com.starturn.engine.facade.IAuthenticationFacade;
+import com.starturn.engine.models.ChangePasswordDTO;
 import com.starturn.engine.models.EsusuGroupDTO;
 import com.starturn.engine.models.EsusuGroupInviteWrapper;
 import com.starturn.engine.models.EsusuGroupInvitesDTO;
@@ -21,6 +24,7 @@ import com.starturn.engine.models.response.ErrorMessage;
 import com.starturn.engine.models.response.ResponseInformation;
 import com.starturn.engine.util.DateUtility;
 import com.starturn.engine.util.GeneralUtility;
+import com.starturn.engine.util.PolicyValidator;
 import com.starturn.engine.util.modelmapping.ModelMapping;
 import com.starturn.engine.util.notification.model.EmailMessage;
 import com.starturn.engine.util.notification.model.EmailPlaceholder;
@@ -28,10 +32,13 @@ import com.starturn.engine.util.notification.model.MessageDetails;
 import com.starturn.engine.util.notification.thread.EmailAlertHelper;
 import com.starturn.engine.util.notification.thread.SmsAlertHelper;
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
+import java.util.Random;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -69,6 +76,8 @@ public class RequestLogic {
     DateUtility dateUtility;
     private @Autowired
     IAuthenticationFacade authenticationFacade;
+    private @Autowired
+    AsyncRunner asyncRunner;
 
     public ResponseEntity<?> signUp(MemberProfileDTO dto, BindingResult result) throws Exception {
 
@@ -89,6 +98,14 @@ public class RequestLogic {
         }
 
         MemberProfile profile = modelMapping.dtoToMember(dto);
+        profile.setAtmCardExpiry("");
+        profile.setAtmCardNo("");
+        profile.setAtmCardType("");
+        profile.setAtmCvv(0);
+        profile.setAtmPin(0);
+        profile.setBankAccountNumber("");
+        profile.setBvn("");
+        profile.setPassword(passwordEncoder.encode(dto.getPassword()));
         UserToken token = new UserToken();
 
         token.setDateCreated(new Date());
@@ -96,6 +113,8 @@ public class RequestLogic {
         token.setToken(util.getRandomNumberToken());
         token.setUsername(profile.getUsername());
         token.setValidated(Boolean.FALSE);
+
+        String token_validity = "${token-validity}";
 
         boolean created = memberService.userSignUp(profile, token);
         if (!created) {
@@ -105,7 +124,7 @@ public class RequestLogic {
         }
 
         String message = "Your access token is " + token.getToken() + ". "
-                + "Please note that it will expire in five minutes time";
+                + "Please note that it will expire in [" + token_validity + "] minutes time";
 
         if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().trim().isEmpty()) {
             MessageDetails msgDetails = new MessageDetails();
@@ -148,6 +167,11 @@ public class RequestLogic {
         if (user_token.getValidated()) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The token has been validated already."));
+        }
+        if (user_token.getExpired()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The token has expired."));
+
         }
         if (util.getDateDiffInMins(user_token.getDateCreated()) > 2) {
             return ResponseEntity.badRequest()
@@ -423,18 +447,14 @@ public class RequestLogic {
      * treats invitation request to join a group, status true means accepted
      * while false means rejected
      *
-     * @param memberProfileId the member ID that got the invitation
      * @param invitationId the invitation id
      * @param status the acceptance / rejection status
      * @return response to the user after treating the request
      * @throws Exception
      */
-    public ResponseEntity<?> treatGroupInvitation(Integer memberProfileId, Integer invitationId, Boolean status) throws Exception {
+    public ResponseEntity<?> treatGroupInvitation(Integer invitationId, Boolean status) throws Exception {
         MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
-        if (!daoService.checkObjectExists(MemberProfile.class, memberProfileId)) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The specified member id is invalid"));
-        }
+       
         if (!daoService.checkObjectExists(EsusuGroupInvites.class, invitationId)) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The specified group invitation id is invalid"));
@@ -447,29 +467,40 @@ public class RequestLogic {
         EsusuGroupInvites invite = (EsusuGroupInvites) daoService.getEntity(EsusuGroupInvites.class, invitationId);
         EsusuGroup group = (EsusuGroup) daoService.getEntity(EsusuGroup.class, invite.getEsusuGroup().getId());
 
-        if (invite.getMemberProfile().getId() != memberProfileId) {
+        if (!Objects.equals(invite.getMemberProfile().getId(), initiator.getId())) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("You are not allowed to treat another user's request."));
         }
 
-        if (initiator.getId() != memberProfileId) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("You are not allowed to treat another user's request."));
-        }
         if (group.getCircleCompleted()) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The circle of the group's invitation has completed already, you cannot treat it anymore."));
         }
+        EsusuGroupMembers group_member = new EsusuGroupMembers();
+        List<Object> tosave = new ArrayList<>();
+        
         if (!status) {
             invite.setRejected(status);
         } else {
             invite.setAccepted(status);
+            group_member.setAmountPaid(BigDecimal.ZERO);
+            group_member.setCollectionPosition("");
+            group_member.setCreatedByUsername(group.getCreatedByUsername());
+            group_member.setCreationDate(new Date());
+            group_member.setEsusuGroup(group);
+            group_member.setExpectedAmount(group.getMonthlyCollectionAmount());
+            group_member.setExpectedCollectionDate(null);
+            group_member.setMemberProfile(initiator);
+            group_member.setPaid(false);
+            tosave.add(group_member);
         }
         invite.setResponseDate(new Date());
-        boolean updated = daoService.saveUpdateEntity(invite);
+        tosave.add(invite);
+        
+        boolean updated = daoService.saveUpdateEntities(tosave);
         if (!updated) {
             return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("Unable to invite users to join group, "
+                    .body(new ResponseInformation("Unable to attend to group invitation, "
                                     + "Please contact Administrator"));
         }
         return ResponseEntity.ok(new ResponseInformation("Successful"));
@@ -489,17 +520,298 @@ public class RequestLogic {
         }
         List<EsusuGroupInvitesDTO> list_out = new ArrayList<>();
         for (EsusuGroupInvites inv : invites) {
-            MemberProfile member = (MemberProfile)daoService.getEntity(MemberProfile.class, inv.getMemberProfile().getId());
-            
+            MemberProfile member = (MemberProfile) daoService.getEntity(MemberProfile.class, inv.getMemberProfile().getId());
+
             EsusuGroupInvitesDTO dto = new EsusuGroupInvitesDTO();
             dto.setId(inv.getId());
             dto.setAccepted(inv.getAccepted());
             dto.setRejected(inv.getRejected());
             dto.setEsusuGroupId(inv.getEsusuGroup().getId());
             dto.setInvitedByUsername(inv.getInvitedByUsername());
-            dto.setEmailAddress(member.getName());
+            dto.setEmailAddress(member.getEmailAddress());
             list_out.add(dto);
         }
         return ResponseEntity.ok(list_out);
+    }
+
+    public ResponseEntity<?> viewGroupInvitations(Integer groupId) throws Exception {
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+        if (!daoService.checkObjectExists(EsusuGroup.class, groupId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified group id is invalid"));
+        }
+
+        List<EsusuGroupInvites> invites = memberService.viewGroupInvitations(groupId);
+        if (invites.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("There are no invitations for this group."));
+        }
+
+        List<EsusuGroupInvitesDTO> list_out = new ArrayList<>();
+        for (EsusuGroupInvites inv : invites) {
+            MemberProfile member = (MemberProfile) daoService.getEntity(MemberProfile.class, inv.getMemberProfile().getId());
+
+            EsusuGroupInvitesDTO dto = new EsusuGroupInvitesDTO();
+            dto.setId(inv.getId());
+            dto.setAccepted(inv.getAccepted());
+            dto.setRejected(inv.getRejected());
+            dto.setEsusuGroupId(inv.getEsusuGroup().getId());
+            dto.setInvitedByUsername(inv.getInvitedByUsername());
+            dto.setEmailAddress(member.getEmailAddress());
+            list_out.add(dto);
+        }
+        return ResponseEntity.ok(list_out);
+    }
+
+    public ResponseEntity<?> viewAcceptedGroupInvitations(Integer groupId) throws Exception {
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+        if (!daoService.checkObjectExists(EsusuGroup.class, groupId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified group id is invalid"));
+        }
+
+        List<EsusuGroupInvites> invites = memberService.viewAllAcceptedGroupInvitations(groupId);
+        if (invites.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("There are no invitations for this group."));
+        }
+
+        List<EsusuGroupInvitesDTO> list_out = new ArrayList<>();
+        for (EsusuGroupInvites inv : invites) {
+            MemberProfile member = (MemberProfile) daoService.getEntity(MemberProfile.class, inv.getMemberProfile().getId());
+
+            EsusuGroupInvitesDTO dto = new EsusuGroupInvitesDTO();
+            dto.setId(inv.getId());
+            dto.setAccepted(inv.getAccepted());
+            dto.setRejected(inv.getRejected());
+            dto.setEsusuGroupId(inv.getEsusuGroup().getId());
+            dto.setInvitedByUsername(inv.getInvitedByUsername());
+            dto.setEmailAddress(member.getEmailAddress());
+            list_out.add(dto);
+        }
+        return ResponseEntity.ok(list_out);
+    }
+
+    public ResponseEntity<?> viewRejectedGroupInvitations(Integer groupId) throws Exception {
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+        if (!daoService.checkObjectExists(EsusuGroup.class, groupId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified group id is invalid"));
+        }
+
+        List<EsusuGroupInvites> invites = memberService.viewAllRejectedGroupInvitations(groupId);
+        if (invites.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("There are no invitations for this group."));
+        }
+
+        List<EsusuGroupInvitesDTO> list_out = new ArrayList<>();
+        for (EsusuGroupInvites inv : invites) {
+            MemberProfile member = (MemberProfile) daoService.getEntity(MemberProfile.class, inv.getMemberProfile().getId());
+
+            EsusuGroupInvitesDTO dto = new EsusuGroupInvitesDTO();
+            dto.setId(inv.getId());
+            dto.setRejected(inv.getRejected());
+            dto.setEsusuGroupId(inv.getEsusuGroup().getId());
+            dto.setInvitedByUsername(inv.getInvitedByUsername());
+            dto.setEmailAddress(member.getEmailAddress());
+            list_out.add(dto);
+        }
+        return ResponseEntity.ok(list_out);
+    }
+
+    public ResponseEntity<?> login() throws Exception {
+        MemberProfile memberProfile = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+
+        asyncRunner.processMemberLastLogin(memberProfile.getId());
+
+        MemberProfileDTO memberProfileDTO = modelMapping.memberToDtoMapping(memberProfile);
+
+        return ResponseEntity.ok(memberProfileDTO);
+    }
+
+    public ResponseEntity<?> viewUserDetails(Integer profileId) throws Exception {
+        if (!daoService.checkObjectExists(MemberProfile.class, profileId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The requested profile does not exist"));
+        }
+
+        MemberProfile memberProfileToView = (MemberProfile) daoService.getEntity(MemberProfile.class, profileId);
+        if (memberProfileToView.getAccountClosed()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("This account has been closed, please contact the admin."));
+        }
+        if (!memberProfileToView.getActive()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("This account is yet to be activated, please contact the admin."));
+        }
+        MemberProfileDTO userDetails = modelMapping.memberToDtoMapping(memberProfileToView);
+
+        return ResponseEntity.ok(userDetails);
+    }
+
+    public ResponseEntity<?> resetPassword(String username) throws Exception {
+        if (!memberService.checkUserExists(username)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The user does not exist"));
+        }
+        MemberProfile memberProfile = memberService.getUserInformation(username);
+        if (memberProfile.getAccountClosed()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("This account has been closed, please contact the admin."));
+        }
+        if (!memberProfile.getActive()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("This account is yet to be activated, please contact the admin."));
+        }
+
+        char[] charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".toCharArray();
+        Random random = new SecureRandom();
+        char[] result = new char[8];
+        for (int i = 0; i < result.length; i++) {
+            int randomCharIndex = random.nextInt(charset.length);
+            result[i] = charset[randomCharIndex];
+        }
+        String randomPassword = new String(result);
+        String hashedRandomPassword = passwordEncoder.encode(randomPassword);
+
+        memberProfile.setPassword(hashedRandomPassword);
+        if (!memberProfile.getFirstTime()) {
+            memberProfile.setFirstTime(true);
+        }
+
+        boolean saved = daoService.saveUpdateEntity(memberProfile);
+        if (!saved) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The database could not make the necessary change. "
+                                    + "Please contact Administrator"));
+        }
+
+        String emailAddress = memberProfile.getEmailAddress();
+
+        String message = "Your password has been reset successfully. "
+                + "Your password is now " + randomPassword + ". "
+                + "Please, login to change to your preferred password.";
+
+        if (emailAddress != null && !emailAddress.trim().isEmpty()) {
+            EmailPlaceholder placeHolder = new EmailPlaceholder();
+            placeHolder.setFirst_name(memberProfile.getName());
+            placeHolder.setLast_name(memberProfile.getName());
+            placeHolder.setCoop_name("Starturn");
+
+            EmailMessage msgDetails = new EmailMessage();
+            msgDetails.setSubject("Reset password");
+            msgDetails.setTo_email(emailAddress);
+            msgDetails.setEmailBody(message);
+            msgDetails.setPlaceholder(placeHolder);
+
+            emailAlert.sendSingleEmailOffice365(msgDetails);
+        }
+
+        if (memberProfile.getPhoneNumber() != null && !memberProfile.getPhoneNumber().trim().isEmpty()) {
+            MessageDetails msgDetails = new MessageDetails();
+            msgDetails.setFrom("DEMOCOOP");
+            msgDetails.setTo(memberProfile.getPhoneNumber());
+            msgDetails.setText(message);
+
+            smsAlert.sendSingleTextMessage(msgDetails);
+        }
+
+        return ResponseEntity.ok(new ResponseInformation("successful"));
+    }
+
+    public ResponseEntity<?> changePassword(ChangePasswordDTO passwordInfo, BindingResult result) throws Exception {
+        if (result.hasFieldErrors()) {
+            String errors = result.getFieldErrors().stream()
+                    .map(p -> p.getDefaultMessage()).collect(Collectors.joining("\n"));
+            return ResponseEntity.badRequest().body(new ResponseInformation("An error occured while trying to persist information: " + errors));
+        }
+
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+
+        System.out.println("current password from ACCOUNT: " + initiator.getPassword());
+        System.out.println("current password from API: " + passwordInfo.getOldPassword());
+
+        if (!passwordEncoder.matches(passwordInfo.getOldPassword(), initiator.getPassword())) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Your old password is incorrect. Please, try again"));
+        }
+
+        if (!passwordInfo.getPassword().equals(passwordInfo.getConfirmPassword())) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Your password and confirmation password do not match. Please, try again"));
+        }
+
+        if (passwordEncoder.matches(passwordInfo.getPassword(), initiator.getPassword())) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("You are not allowed to use the old password again. Please, try again"));
+        }
+
+        if (passwordInfo.getIsfirstTime() == null) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Is first time flag must be set."));
+        }
+
+        int passwordLength = 6;
+
+        //PASSWORD POLICY
+        //there must be a digit (?=.*\\d)
+        //there must be a small letter (?=.*[a-z])
+        //there must be a capital letter (?=.*[A-Z])
+        //there must be a special character (?=.*[!@#$%&])
+        //all the above can be placed anywhere within the password, hence the .*
+        //all the above combined must make up 8 characters or up to 20 characters, assuming the password length is 8
+        String policy = "((?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%&]).{" + passwordLength + ",20})";
+
+        if (!PolicyValidator.validatePassword(passwordInfo.getPassword(), policy)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Your password does not meet the system's password policy. "
+                                    + "Passwords must be " + passwordLength + " or longer, and must contain a digit, "
+                                    + "a small letter, a capital letter, and any of the following special characters: "
+                                    + "!@#$%&"));
+        }
+
+        String hashedRandomPassword = passwordEncoder.encode(passwordInfo.getPassword());
+        initiator.setPassword(hashedRandomPassword);
+
+        if (initiator.getFirstTime()) {
+            initiator.setFirstTime(false);
+        }
+
+        boolean saved = daoService.saveUpdateEntity(initiator);
+        if (!saved) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The database could not make the necessary change. "
+                                    + "Please contact Administrator"));
+        }
+
+        String emailAddress = initiator.getEmailAddress();
+        String message = "Your password has been successfully changed.";
+
+        if (emailAddress != null && !emailAddress.trim().isEmpty()) {
+            EmailPlaceholder placeHolder = new EmailPlaceholder();
+            placeHolder.setFirst_name(initiator.getName());
+            placeHolder.setLast_name(initiator.getName());
+            placeHolder.setCoop_name("Starturn");
+
+            EmailMessage msgDetails = new EmailMessage();
+            msgDetails.setSubject("Change password");
+            msgDetails.setTo_email(emailAddress);
+            msgDetails.setEmailBody(message);
+            msgDetails.setPlaceholder(placeHolder);
+
+            emailAlert.sendSingleEmailOffice365(msgDetails);
+        }
+        String phoneNumber = initiator.getPhoneNumber();
+        if (phoneNumber != null && !phoneNumber.trim().isEmpty()) {
+            MessageDetails msgDetails = new MessageDetails();
+            msgDetails.setFrom("DEMOCOOP");
+            msgDetails.setTo(phoneNumber);
+            msgDetails.setText(message);
+
+            smsAlert.sendSingleTextMessage(msgDetails);
+        }
+
+        return ResponseEntity.ok(new ResponseInformation("Successful"));
     }
 }
