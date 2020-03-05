@@ -19,6 +19,8 @@ import com.starturn.engine.models.ChangePasswordDTO;
 import com.starturn.engine.models.EsusuGroupDTO;
 import com.starturn.engine.models.EsusuGroupInviteWrapper;
 import com.starturn.engine.models.EsusuGroupInvitesDTO;
+import com.starturn.engine.models.EsusuGroupMemberDTO;
+import com.starturn.engine.models.EsusuGroupMembersWrapperDTO;
 import com.starturn.engine.models.MemberProfileDTO;
 import com.starturn.engine.models.response.ErrorMessage;
 import com.starturn.engine.models.response.ResponseInformation;
@@ -36,9 +38,11 @@ import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -120,7 +124,7 @@ public class RequestLogic {
         if (!created) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The database could not make the necessary change. "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
 
         String message = "Your access token is " + token.getToken() + ". "
@@ -192,7 +196,7 @@ public class RequestLogic {
         if (!saved) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("Unable to validate token, "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
 
         return ResponseEntity.ok(new ResponseInformation("successful"));
@@ -232,7 +236,7 @@ public class RequestLogic {
         if (!saved) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("Unable to generate token, "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
 
         String message = "Your account validation token is " + user_token.getToken();
@@ -289,7 +293,7 @@ public class RequestLogic {
         if (!created) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("Unable to update member account, "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
 
         return ResponseEntity.ok(new ResponseInformation("successful"));
@@ -351,7 +355,7 @@ public class RequestLogic {
         if (!created) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("Unable to create group, "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
 
         return ResponseEntity.ok(new ResponseInformation("Group creation was successful with the end date as " + endDate));
@@ -388,9 +392,16 @@ public class RequestLogic {
             }
 
             List<String> not_found = new ArrayList<>();
+            Set<String> repeating_ids = new HashSet<>();
+
             for (String username : dto.getUsernames()) {
-                if (!memberService.checkUserExists(username)) {//replace with email exists method
+                if (!memberService.checkUserExists(username)) {
                     not_found.add(username);
+                }
+                if (!repeating_ids.add(username)) {
+                    return ResponseEntity.badRequest()
+                            .body(new ResponseInformation("The username, " + username
+                                    + ", appears to be repeating, duplicates are not allowed."));
                 }
             }
             if (!not_found.isEmpty()) {
@@ -398,6 +409,7 @@ public class RequestLogic {
                         .body(new ResponseInformation("No match found for these username(s) - " + not_found));
             }
             List<EsusuGroupInvites> invites_list = new ArrayList<>();
+
             for (String username : dto.getUsernames()) {
                 EsusuGroupInvites invite = new EsusuGroupInvites();
                 MemberProfile member = memberService.getUserInformation(username);
@@ -414,7 +426,7 @@ public class RequestLogic {
             if (!saved) {
                 return ResponseEntity.badRequest()
                         .body(new ResponseInformation("Unable to invite users to join group, "
-                                        + "Please contact Administrator"));
+                                + "Please contact Administrator"));
             }
 
             for (String username : dto.getUsernames()) {
@@ -454,7 +466,7 @@ public class RequestLogic {
      */
     public ResponseEntity<?> treatGroupInvitation(Integer invitationId, Boolean status) throws Exception {
         MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
-       
+
         if (!daoService.checkObjectExists(EsusuGroupInvites.class, invitationId)) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The specified group invitation id is invalid"));
@@ -478,7 +490,7 @@ public class RequestLogic {
         }
         EsusuGroupMembers group_member = new EsusuGroupMembers();
         List<Object> tosave = new ArrayList<>();
-        
+
         if (!status) {
             invite.setRejected(status);
         } else {
@@ -496,12 +508,12 @@ public class RequestLogic {
         }
         invite.setResponseDate(new Date());
         tosave.add(invite);
-        
+
         boolean updated = daoService.saveUpdateEntities(tosave);
         if (!updated) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("Unable to attend to group invitation, "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
         return ResponseEntity.ok(new ResponseInformation("Successful"));
     }
@@ -684,7 +696,7 @@ public class RequestLogic {
         if (!saved) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The database could not make the necessary change. "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
 
         String emailAddress = memberProfile.getEmailAddress();
@@ -766,9 +778,9 @@ public class RequestLogic {
         if (!PolicyValidator.validatePassword(passwordInfo.getPassword(), policy)) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("Your password does not meet the system's password policy. "
-                                    + "Passwords must be " + passwordLength + " or longer, and must contain a digit, "
-                                    + "a small letter, a capital letter, and any of the following special characters: "
-                                    + "!@#$%&"));
+                            + "Passwords must be " + passwordLength + " or longer, and must contain a digit, "
+                            + "a small letter, a capital letter, and any of the following special characters: "
+                            + "!@#$%&"));
         }
 
         String hashedRandomPassword = passwordEncoder.encode(passwordInfo.getPassword());
@@ -782,7 +794,7 @@ public class RequestLogic {
         if (!saved) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The database could not make the necessary change. "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
 
         String emailAddress = initiator.getEmailAddress();
@@ -812,6 +824,87 @@ public class RequestLogic {
             smsAlert.sendSingleTextMessage(msgDetails);
         }
 
+        return ResponseEntity.ok(new ResponseInformation("Successful"));
+    }
+
+    public ResponseEntity<?> prepareGroupSavingsCollectionDate(EsusuGroupMembersWrapperDTO dto, BindingResult result) throws Exception {
+        if (result.hasFieldErrors()) {
+            String errors = result.getFieldErrors().stream()
+                    .map(p -> p.getDefaultMessage()).collect(Collectors.joining("\n"));
+            return ResponseEntity.badRequest().body(new ResponseInformation("An error occured while trying to persist information: " + errors));
+        }
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+
+        if (dto.getGroupMembers().size() < 1) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The esusu group members list cannot be empty, "
+                            + "Please contact Administrator"));
+        }
+        if (!daoService.checkObjectExists(EsusuGroup.class, dto.getGroupMembers().get(0).getEsusuGroupId())) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified group id is invalid."));
+        }
+
+        int level = 1;
+        List<EsusuGroupMembers> list_to_update = new ArrayList<>();
+        Date startDate = formatter.parse(dto.getCollectionDate());
+
+        EsusuGroup group_hib = (EsusuGroup) daoService.getEntity(EsusuGroup.class, dto.getGroupMembers().get(0).getEsusuGroupId());
+        ContributionFrequency contributionFrequency = (ContributionFrequency) daoService.getEntity(ContributionFrequency.class, group_hib.getContributionFrequency().getId());
+
+        if (!initiator.getUsername().equalsIgnoreCase(group_hib.getCreatedByUsername())) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Only the creator of this group is allowed to perform this function."));
+        }
+        
+        String freqName = contributionFrequency.getName();
+        int frequencyId = dateUtility.getJavaDateCalendarFieldId(freqName);
+        Set<Integer> repeating_ids = new HashSet<>();
+
+        for (EsusuGroupMemberDTO egm : dto.getGroupMembers()) {
+            Date collectionDate = dateUtility.addToDate(startDate, 1, frequencyId);
+
+            if (!repeating_ids.add(egm.getMemberProfileId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], is repeating, please remove duplicates."));
+            }
+
+            if (!daoService.checkObjectExists(EsusuGroupMembers.class, egm.getId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified id [" + egm.getId() + "], does not exist."));
+            }
+
+            if (!daoService.checkObjectExists(MemberProfile.class, egm.getMemberProfileId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], does not exist."));
+            }
+
+            if (egm.getCollectionPosition() == null || egm.getCollectionPosition() != level) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("A collection position contains an illegal position number. "
+                                + "It should be " + level + ", whereas it is " + egm.getCollectionPosition()));
+            }
+            EsusuGroupMembers group_member = (EsusuGroupMembers) daoService.getEntity(EsusuGroupMembers.class, egm.getId());
+            group_member.setCollectionPosition(String.valueOf(egm.getCollectionPosition()));
+
+            if (level == 1) {
+                group_member.setExpectedCollectionDate(startDate);
+            } else {
+                group_member.setExpectedCollectionDate(collectionDate);
+            }
+
+            list_to_update.add(group_member);
+            level++;
+
+        }
+        boolean created = daoService.saveUpdateEntities(list_to_update);
+
+        if (!created) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Unable to persist changes due to error, "
+                            + "Please contact Administrator"));
+        }
         return ResponseEntity.ok(new ResponseInformation("Successful"));
     }
 }

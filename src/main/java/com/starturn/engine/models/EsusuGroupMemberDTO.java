@@ -27,7 +27,7 @@ public class EsusuGroupMemberDTO {
     @NotNull(message = "member profile id cannot be null")
     private Integer memberProfileId;
     @NotNull(message = "collection position must be a number")
-    private String collectionPosition;
+    private Integer collectionPosition;
     @NotNull(message = "expected amount cannot be null")
     private BigDecimal expectedAmount;
     @NotNull(message = "amount paid cannot be null")
@@ -38,7 +38,7 @@ public class EsusuGroupMemberDTO {
     private String paidDate;
     @NotNull(message = "creation date cannot be null")
     private String creationDate;
-    @NotNull(message = "expected collection date must be in the format dd")
+    @NotNull(message = "expected collection date must be specified")
     private String expectedCollectionDate;
     private String createdByUsername;
 }

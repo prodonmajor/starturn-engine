@@ -18,5 +18,7 @@ import lombok.ToString;
 @Setter
 @ToString
 public class EsusuGroupMembersWrapperDTO {
-  private List<EsusuGroupMemberDTO> groupMembers;  
+
+    private List<EsusuGroupMemberDTO> groupMembers;
+    private String collectionDate;
 }

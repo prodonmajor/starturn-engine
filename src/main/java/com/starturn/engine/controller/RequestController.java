@@ -10,6 +10,7 @@ import com.starturn.engine.models.ChangePasswordDTO;
 import com.starturn.engine.models.EsusuGroupDTO;
 import com.starturn.engine.models.EsusuGroupInviteWrapper;
 import com.starturn.engine.models.EsusuGroupInvitesDTO;
+import com.starturn.engine.models.EsusuGroupMembersWrapperDTO;
 import com.starturn.engine.models.MemberProfileDTO;
 import com.starturn.engine.models.response.ResponseInformation;
 import io.swagger.annotations.Api;
@@ -171,4 +172,14 @@ public class RequestController {
         return logic.viewUserDetails(profileId);
     }
 
+    @PostMapping("/preparegroupsavingscollectiondate")
+    @ApiOperation(value = "prepare group savings collection date")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class),
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class),
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> prepareGroupSavingsCollectionDate(@Valid @RequestBody EsusuGroupMembersWrapperDTO dto, BindingResult result) throws Exception{
+    return logic.prepareGroupSavingsCollectionDate(dto, result);
+    }
 }
