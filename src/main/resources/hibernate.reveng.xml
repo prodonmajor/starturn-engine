@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-reverse-engineering PUBLIC "-//Hibernate/Hibernate Reverse Engineering DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-reverse-engineering-3.0.dtd">
+<hibernate-reverse-engineering>
+    <schema-selection match-catalog="starturn"/>
+    
+    <type-mapping>
+        <sql-type jdbc-type="BIGINT" hibernate-type="java.lang.Long"/>
+        <!--<sql-type jdbc-type="DECIMAL" hibernate-type="java.lang.Double"/>-->
+    </type-mapping>
+    
+  <table-filter match-name="CONTRIBUTION_FREQUENCY"/>
+  <table-filter match-name="TARGET_SAVINGS_PLAN"/>
+  <table-filter match-name="ESUSU_GROUP_MEMBERS"/>
+  <table-filter match-name="REQUIREMENT"/>
+  <table-filter match-name="BANK"/>
+  <table-filter match-name="ESUSU_GROUP_INVITES"/>
+  <table-filter match-name="USER_TOKEN"/>
+  <table-filter match-name="MEMBER_PROFILE"/>
+  <table-filter match-name="TARGET_SAVINGS"/>
+  <table-filter match-name="ESUSU_GROUP"/>
+  <table-filter match-name="GENDER"/>
+  <table-filter match-name="TRANSACTION"/>
+  <table-filter match-name="TRANSACTION_TYPE"/>
+  <table-filter match-name="MEMBER_WALLET_TRANSACTION"/>
+  
+  <table name="BANK">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="CONTRIBUTION_FREQUENCY">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="TARGET_SAVINGS_PLAN">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="ESUSU_GROUP_MEMBERS">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="REQUIREMENT">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="ESUSU_GROUP_INVITES">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="USER_TOKEN">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="MEMBER_PROFILE">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="TARGET_SAVINGS">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="ESUSU_GROUP">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="GENDER">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="TRANSACTION">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="TRANSACTION_TYPE">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    
+    <table name="MEMBER_WALLET_TRANSACTION">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+</hibernate-reverse-engineering>

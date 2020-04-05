@@ -5,10 +5,10 @@
  */
 package com.starturn.engine.util.modelmapping;
 
-import com.starturn.database.entities.ContributionFrequency;
-import com.starturn.database.entities.EsusuGroup;
-import com.starturn.database.entities.MemberProfile;
-import com.starturn.database.query.factory.ServiceQueryFactory;
+import com.starturn.engine.database.entities.ContributionFrequency;
+import com.starturn.engine.database.entities.EsusuGroup;
+import com.starturn.engine.database.entities.MemberProfile;
+import com.starturn.engine.database.query.factory.ServiceQueryFactory;
 import com.starturn.engine.models.EsusuGroupDTO;
 import com.starturn.engine.models.MemberProfileDTO;
 import java.math.BigDecimal;

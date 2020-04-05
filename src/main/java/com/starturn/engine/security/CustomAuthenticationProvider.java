@@ -5,8 +5,8 @@
  */
 package com.starturn.engine.security;
 
-import com.starturn.database.entities.MemberProfile;
-import com.starturn.database.query.MemberServiceQuery;
+import com.starturn.engine.database.entities.MemberProfile;
+import com.starturn.engine.database.query.MemberServiceQuery;
 import com.starturn.engine.models.response.ErrorMessage;
 import java.util.ArrayList;
 import java.util.List;

@@ -4,9 +4,6 @@
  * and open the template in the editor.
  */
 package com.starturn.engine.models;
-
-import com.starturn.database.entities.EsusuGroup;
-import com.starturn.database.entities.MemberProfile;
 import java.math.BigDecimal;
 import java.util.Date;
 import javax.validation.constraints.Min;

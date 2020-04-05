@@ -5,17 +5,15 @@
  */
 package com.starturn.engine.config;
 
-import com.starturn.database.entities.MemberProfile;
-import com.starturn.database.query.DaoServiceQuery;
-import com.starturn.database.query.MemberServiceQuery;
-import com.starturn.database.query.factory.ServiceQueryFactory;
+import com.starturn.engine.database.entities.MemberProfile;
+import com.starturn.engine.database.query.DaoServiceQuery;
+import com.starturn.engine.database.query.MemberServiceQuery;
+import com.starturn.engine.database.query.factory.ServiceQueryFactory;
 import com.starturn.engine.models.response.ErrorMessage;
 import com.starturn.engine.util.BytesConverter;
 import com.starturn.engine.util.DateUtility;
 import com.starturn.engine.util.GeneralUtility;
 import com.starturn.engine.util.modelmapping.ModelMapping;
-import com.starturn.engine.util.notification.thread.EmailAlertHelper;
-import com.starturn.engine.util.notification.thread.SmsAlertHelper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;

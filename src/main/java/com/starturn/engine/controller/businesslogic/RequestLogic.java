@@ -5,14 +5,14 @@
  */
 package com.starturn.engine.controller.businesslogic;
 
-import com.starturn.database.entities.ContributionFrequency;
-import com.starturn.database.entities.EsusuGroup;
-import com.starturn.database.entities.EsusuGroupInvites;
-import com.starturn.database.entities.EsusuGroupMembers;
-import com.starturn.database.entities.MemberProfile;
-import com.starturn.database.entities.UserToken;
-import com.starturn.database.query.DaoServiceQuery;
-import com.starturn.database.query.MemberServiceQuery;
+import com.starturn.engine.database.entities.ContributionFrequency;
+import com.starturn.engine.database.entities.EsusuGroup;
+import com.starturn.engine.database.entities.EsusuGroupInvites;
+import com.starturn.engine.database.entities.EsusuGroupMembers;
+import com.starturn.engine.database.entities.MemberProfile;
+import com.starturn.engine.database.entities.UserToken;
+import com.starturn.engine.database.query.DaoServiceQuery;
+import com.starturn.engine.database.query.MemberServiceQuery;
 import com.starturn.engine.controller.businesslogic.async.AsyncRunner;
 import com.starturn.engine.facade.IAuthenticationFacade;
 import com.starturn.engine.models.ChangePasswordDTO;
@@ -118,7 +118,7 @@ public class RequestLogic {
         token.setUsername(profile.getUsername());
         token.setValidated(Boolean.FALSE);
 
-        String token_validity = "${token-validity}";
+        String token_validity = "5";
 
         boolean created = memberService.userSignUp(profile, token);
         if (!created) {

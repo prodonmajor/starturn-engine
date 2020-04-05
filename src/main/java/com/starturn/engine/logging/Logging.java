@@ -28,7 +28,7 @@ public class Logging {
     private @Autowired IAuthenticationFacade authenticationFacade;
     private static final Logger logger = LogManager.getLogger(Logging.class);
     
-    @Before("execution(* com.easycoop.radicalengineaccount.controller.businesslogic.*.*(..))")
+    @Before("execution(* com.starturn.engine.controller.businesslogic.*.*(..))")
     public void logEventBefore(JoinPoint joinPoint) {
         String user = "[non-authenticated-user]";
         if (authenticationFacade.getAuthentication() != null) {
@@ -44,7 +44,7 @@ public class Logging {
         logger.info("Processing request from user: {}, for method: {}, with method signature: {}, and method arguments: {}", user, methodName, methodSignature, methodArguments);
     }
     
-    @After("execution(* com.easycoop.radicalengineaccount.controller.businesslogic.*.*(..))")
+    @After("execution(* com.starturn.engine.controller.businesslogic.*.*(..))")
     public void logEventAfter(JoinPoint joinPoint) {
         String user = "[non-authenticated-user]";
         if (authenticationFacade.getAuthentication() != null) {
@@ -61,7 +61,7 @@ public class Logging {
     }
     
     @AfterThrowing(
-            pointcut="execution(* com.easycoop.radicalengineaccount.controller.businesslogic.*.*(..))",
+            pointcut="execution(* com.starturn.engine.controller.businesslogic.*.*(..))",
             throwing = "ex"
     )
     public void logException(JoinPoint joinPoint, Throwable ex) {
