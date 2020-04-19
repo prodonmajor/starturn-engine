@@ -68,11 +68,12 @@ public class MemberProfile  implements java.io.Serializable {
      private Set<TargetSavings> targetSavingses = new HashSet<TargetSavings>(0);
      private Set<UserGroup> userGroups = new HashSet<UserGroup>(0);
      private Set<EsusuGroupInvites> esusuGroupInviteses = new HashSet<EsusuGroupInvites>(0);
+     private Date dob;
 
     public MemberProfile() {
     }
 
-    public MemberProfile(Bank bank, String username, String name, String emailAddress, String phoneNumber, String gender, String password, Boolean accpetedTermsCondition, Boolean locked, Boolean firstTime, Boolean active, Boolean accountClosed, Boolean accountSuspended, Date accountSuspensionDate, Date accountClosureDate, Date creationDate, Date lastLoginDate, String lastLoginTime, String bankAccountNumber, String bvn, String atmCardNo, String atmCardExpiry, Integer atmCvv, Integer atmPin, String atmCardType, Date cardContributionDebitDate, Set<UserToken> userTokens, Set<EsusuGroupMembers> esusuGroupMemberses, Set<Transaction> transactions, Set<MemberWalletTransaction> memberWalletTransactions, Set<TargetSavings> targetSavingses, Set<UserGroup> userGroups, Set<EsusuGroupInvites> esusuGroupInviteses) {
+    public MemberProfile(Bank bank, String username, String name, String emailAddress, String phoneNumber, String gender, String password, Boolean accpetedTermsCondition, Boolean locked, Boolean firstTime, Boolean active, Boolean accountClosed, Boolean accountSuspended, Date accountSuspensionDate, Date accountClosureDate, Date creationDate, Date lastLoginDate, String lastLoginTime, String bankAccountNumber, String bvn, String atmCardNo, String atmCardExpiry, Integer atmCvv, Integer atmPin, String atmCardType, Date cardContributionDebitDate, Set<UserToken> userTokens, Set<EsusuGroupMembers> esusuGroupMemberses, Set<Transaction> transactions, Set<MemberWalletTransaction> memberWalletTransactions, Set<TargetSavings> targetSavingses, Set<UserGroup> userGroups, Set<EsusuGroupInvites> esusuGroupInviteses,Date dob) {
        this.bank = bank;
        this.username = username;
        this.name = name;
@@ -106,6 +107,7 @@ public class MemberProfile  implements java.io.Serializable {
        this.targetSavingses = targetSavingses;
        this.userGroups = userGroups;
        this.esusuGroupInviteses = esusuGroupInviteses;
+       this.dob = dob;
     }
    
      @Id @GeneratedValue(strategy=IDENTITY)
@@ -454,6 +456,16 @@ public class MemberProfile  implements java.io.Serializable {
     
     public void setEsusuGroupInviteses(Set<EsusuGroupInvites> esusuGroupInviteses) {
         this.esusuGroupInviteses = esusuGroupInviteses;
+    }
+
+    @Temporal(TemporalType.DATE)
+    @Column(name="dob", length=10)
+    public Date getDob() {
+        return dob;
+    }
+
+    public void setDob(Date dob) {
+        this.dob = dob;
     }
 
 

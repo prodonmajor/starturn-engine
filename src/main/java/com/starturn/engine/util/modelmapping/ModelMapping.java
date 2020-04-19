@@ -48,6 +48,7 @@ public class ModelMapping {
             }
 
             dto.setActive(memberProfile.getActive());
+            dto.setDob(memberProfile.getDob() != null ? formatter.format(memberProfile.getDob()) : "");
 
         }
 
@@ -70,13 +71,17 @@ public class ModelMapping {
             memberProfile.setName(dto.getName());
             memberProfile.setEmailAddress(dto.getEmailAddress());
             memberProfile.setPhoneNumber(dto.getPhoneNumber());
-            memberProfile.setAccountClosed(dto.getAccountClosed());
-            memberProfile.setAccountSuspended(dto.getAccountSuspended());
-            memberProfile.setLocked(dto.getLocked());
+            memberProfile.setAccountClosed(false);
+            memberProfile.setAccountSuspended(false);
+            memberProfile.setLocked(false);
+            memberProfile.setFirstTime(dto.getFirstTime() != null ? dto.getFirstTime() : false);
             memberProfile.setAccpetedTermsCondition(dto.getAccpetedTermsCondition());
             memberProfile.setCreationDate(!"".equals(dto.getCreationDate()) ? formatter.parse(dto.getCreationDate()) : new Date());
             memberProfile.setGender(dto.getGender());
             memberProfile.setActive(dto.getActive() != null ? dto.getActive() : false);
+            if(dto.getDob() != null && !dto.getDob().isEmpty()){
+            memberProfile.setDob(formatter.parse(dto.getDob()));
+            }
         }
 
         return memberProfile;

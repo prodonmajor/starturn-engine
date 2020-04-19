@@ -89,6 +89,26 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
                     throw new UsernameNotFoundException(loginGeniuneFailMessage);
                 }
                 
+                //check if account has been confirmed
+                if (memberProfile.getActive() != null && !memberProfile.getActive()) {
+                    logger.info("The account, {}, has not been confirmed", username);
+                    errorMessage.setMessage("The account, " + username + ", has not been confirmed");
+                    
+                    loginGeniuneFail = true;
+                    loginGeniuneFailMessage = "The account, " + username + ", has not been confirmed";
+                    throw new UsernameNotFoundException(loginGeniuneFailMessage);
+                }
+                
+                 //check if user has accepted terms and conditions
+                if (memberProfile.getAccpetedTermsCondition() != null && !memberProfile.getAccpetedTermsCondition()) {
+                    logger.info("The account, {}, has not accepted terms and conditions of use.", username);
+                    errorMessage.setMessage("The account, " + username + ", has not accepted terms and conditions of use.");
+                    
+                    loginGeniuneFail = true;
+                    loginGeniuneFailMessage = "The account, " + username + ", has not accepted terms and conditions of use.";
+                    throw new UsernameNotFoundException(loginGeniuneFailMessage);
+                }
+                
                 return new UsernamePasswordAuthenticationToken(username, password, getGrantedAuthorities());
             } else {
                 logger.info("User, {}, does not check out", username);

@@ -182,4 +182,15 @@ public class RequestController {
     public ResponseEntity<?> prepareGroupSavingsCollectionDate(@Valid @RequestBody EsusuGroupMembersWrapperDTO dto, BindingResult result) throws Exception{
     return logic.prepareGroupSavingsCollectionDate(dto, result);
     }
+    
+    @GetMapping("/accepttermsandconditions")
+    @ApiOperation(value = "Extension requirement")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class),
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class),
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> acceptTermsAndConditions() throws Exception {
+        return logic.acceptTermsAndConditions();
+    }
 }

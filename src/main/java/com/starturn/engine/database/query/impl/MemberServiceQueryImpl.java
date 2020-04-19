@@ -349,4 +349,30 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
         }
         return invites;
     }
+
+    @Override
+    public UserToken retrieveTokenByEmail(String email) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        UserToken profile = new UserToken();
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<UserToken> cr = cb.createQuery(UserToken.class);
+
+            Root<UserToken> root = cr.from(UserToken.class);
+            cr.select(root).where(cb.equal(root.get("username"), email));
+
+            Query<UserToken> query = dao.getSession().createQuery(cr);
+            profile = query.getSingleResult();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return profile;
+    }
 }

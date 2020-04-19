@@ -127,12 +127,11 @@ public class RequestLogic {
                             + "Please contact Administrator"));
         }
 
-        String message = "Your access token is " + token.getToken() + ". "
-                + "Please note that it will expire in [" + token_validity + "] minutes time";
+        String message = "Starturn confirmation token is " + token.getToken();
 
         if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().trim().isEmpty()) {
             MessageDetails msgDetails = new MessageDetails();
-            msgDetails.setFrom("DEMOCOOP");
+            msgDetails.setFrom("Eazcoopdemo");
             msgDetails.setTo(dto.getPhoneNumber());
             msgDetails.setText(message);
 
@@ -209,21 +208,7 @@ public class RequestLogic {
         }
 
         MemberProfile memberProfile = memberService.getUserInformation(emailAddress);
-        UserToken user_token = new UserToken();//credentialsService.getUserToken(token);
-
-        if (user_token.getExpired()) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The token has expired."));
-        }
-        if (user_token.getValidated()) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The token has been validated already."));
-        }
-        if (util.getDateDiffInMins(user_token.getDateCreated()) > 2) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The token has expired."));
-
-        }
+        UserToken user_token = new UserToken();
 
         user_token.setMemberProfile(memberProfile);
         user_token.setDateCreated(new Date());
@@ -239,11 +224,11 @@ public class RequestLogic {
                             + "Please contact Administrator"));
         }
 
-        String message = "Your account validation token is " + user_token.getToken();
+        String message = "Starturn confirmation token is " + user_token.getToken();
 
         if (memberProfile.getPhoneNumber() != null && !memberProfile.getPhoneNumber().trim().isEmpty()) {
             MessageDetails msgDetails = new MessageDetails();
-            msgDetails.setFrom("DEMOCOOP");
+            msgDetails.setFrom("Eazcoopdemo");
             msgDetails.setTo(memberProfile.getPhoneNumber());
             msgDetails.setText(message);
 
@@ -265,7 +250,7 @@ public class RequestLogic {
             emailAlert.sendSingleEmailOffice365(msgDetails);
         }
 
-        return ResponseEntity.ok(new ResponseInformation("successful"));
+        return ResponseEntity.ok(new ResponseInformation("Successful"));
     }
 
     public ResponseEntity<?> updateMemberProfile(MemberProfileDTO dto, BindingResult result) throws Exception {
@@ -276,17 +261,23 @@ public class RequestLogic {
             return ResponseEntity.badRequest().body(new ResponseInformation("An error occured while trying to persist information: " + errors));
         }
 
-        if (!memberService.checkUserExists(dto.getEmailAddress())) {//replace with email exists method
+        if (!daoService.checkObjectExists(MemberProfile.class, dto.getId())) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified member id does not exist."));
+        }
+        MemberProfile initiator = (MemberProfile) daoService.getEntity(MemberProfile.class, dto.getId());
+        if ((dto.getEmailAddress().trim().isEmpty() && !initiator.getEmailAddress().equalsIgnoreCase(dto.getEmailAddress())) && memberService.checkUserExists(dto.getEmailAddress())) {//replace with email exists method
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The email address is registered in the system already."));
         }
 
-        if (memberService.checkUserExists(dto.getPhoneNumber())) {
+        if (!initiator.getPhoneNumber().equals(dto.getPhoneNumber()) && memberService.checkUserExists(dto.getPhoneNumber())) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The phone number is registered in the system already."));
         }
 
         MemberProfile profile = modelMapping.dtoToMember(dto);
+        logger.info("date of birth {} ",profile.getDob());
 
         boolean created = daoService.saveUpdateEntity(profile);
 
@@ -857,7 +848,7 @@ public class RequestLogic {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("Only the creator of this group is allowed to perform this function."));
         }
-        
+
         String freqName = contributionFrequency.getName();
         int frequencyId = dateUtility.getJavaDateCalendarFieldId(freqName);
         Set<Integer> repeating_ids = new HashSet<>();
@@ -903,6 +894,19 @@ public class RequestLogic {
         if (!created) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("Unable to persist changes due to error, "
+                            + "Please contact Administrator"));
+        }
+        return ResponseEntity.ok(new ResponseInformation("Successful"));
+    }
+
+    public ResponseEntity<?> acceptTermsAndConditions() throws Exception {
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+        initiator.setAccpetedTermsCondition(Boolean.TRUE);
+
+        boolean saved = daoService.saveUpdateEntity(initiator);
+        if (!saved) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The database could not make the necessary change. "
                             + "Please contact Administrator"));
         }
         return ResponseEntity.ok(new ResponseInformation("Successful"));
