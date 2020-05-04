@@ -67,4 +67,17 @@ public class NonAuthController {
     public ResponseEntity<?> generateToken(@RequestParam(value = "email", required = true) String emailAddress) throws Exception {
         return logic.generateToken(emailAddress);
     }
+    
+    @GetMapping("/resetpassword")
+    @ApiOperation(value = "Reset password")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> resetPassword(@RequestParam(value = "username", required = true) String username) throws Exception {
+        return logic.resetPassword(username);
+    }
 }

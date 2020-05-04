@@ -7,9 +7,13 @@ package com.starturn.engine.util.modelmapping;
 
 import com.starturn.engine.database.entities.ContributionFrequency;
 import com.starturn.engine.database.entities.EsusuGroup;
+import com.starturn.engine.database.entities.EsusuGroupMembers;
+import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
 import com.starturn.engine.database.entities.MemberProfile;
 import com.starturn.engine.database.query.factory.ServiceQueryFactory;
 import com.starturn.engine.models.EsusuGroupDTO;
+import com.starturn.engine.models.EsusuGroupMemberDto;
+import com.starturn.engine.models.EsusuRepaymentScheduleDto;
 import com.starturn.engine.models.MemberProfileDTO;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
@@ -79,8 +83,8 @@ public class ModelMapping {
             memberProfile.setCreationDate(!"".equals(dto.getCreationDate()) ? formatter.parse(dto.getCreationDate()) : new Date());
             memberProfile.setGender(dto.getGender());
             memberProfile.setActive(dto.getActive() != null ? dto.getActive() : false);
-            if(dto.getDob() != null && !dto.getDob().isEmpty()){
-            memberProfile.setDob(formatter.parse(dto.getDob()));
+            if (dto.getDob() != null && !dto.getDob().isEmpty()) {
+                memberProfile.setDob(formatter.parse(dto.getDob()));
             }
         }
 
@@ -105,6 +109,7 @@ public class ModelMapping {
                 dto.setName(esusuGroup.getName());
                 dto.setNumberOfContributors(esusuGroup.getNumberOfContributors());
                 dto.setStartDate(formatter.format(esusuGroup.getStartDate()));
+                dto.setPositionArranged(esusuGroup.getPositionArranged() != null ? esusuGroup.getPositionArranged() : false);
             }
         } catch (Exception ex) {
             logger.error("An error occured while converting from esusu group entity to esusu group dto. ", ex);
@@ -138,10 +143,70 @@ public class ModelMapping {
                 esusuGroup.setNumberOfContributors(dto.getNumberOfContributors());
                 esusuGroup.setStartDate(formatter.parse(dto.getStartDate()));
                 esusuGroup.setCircleCompleted(dto.getCircleEnded() != null ? dto.getCircleEnded() : false);
+                esusuGroup.setPositionArranged(dto.getPositionArranged() != null ? dto.getPositionArranged() : false);
+                
             }
         } catch (Exception ex) {
             logger.error("An error occured while converting from esusu group entity to esusu group dto. ", ex);
         }
         return esusuGroup;
     }
+
+    public EsusuGroupMemberDto esusuGroupMemberToDto(EsusuGroupMembers group_member) {
+        EsusuGroupMemberDto dto = new EsusuGroupMemberDto();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        try {
+            if (group_member != null) {
+                MemberProfile memberProfile = (MemberProfile) ServiceQueryFactory.getDaoServiceQuery().
+                        getEntity(MemberProfile.class, group_member.getMemberProfile().getId());
+                dto.setId(group_member.getId());
+                dto.setAmountPaid(group_member.getAmountPaid());
+                dto.setCollectionPosition(Integer.parseInt(group_member.getCollectionPosition()));
+                dto.setCreatedByUsername(group_member.getCreatedByUsername());
+                dto.setCreationDate(formatter.format(group_member.getCreationDate()));
+                dto.setEsusuGroupId(group_member.getEsusuGroup().getId());
+                dto.setExpectedAmount(group_member.getExpectedAmount());
+                dto.setExpectedCollectionDate(formatter.format(group_member.getExpectedCollectionDate()));
+                dto.setMemberProfileId(group_member.getMemberProfile().getId());
+                dto.setPaid(group_member.getPaid());
+                dto.setMemberName(memberProfile.getName());
+                dto.setInterestAmountToPayback(group_member.getInterestAmountToPayback());
+                dto.setInterestAmountToReceive(group_member.getInterestAmountToReceive());
+                dto.setMonthlyInterestAmountPayback(group_member.getMonthlyInterestAmountPayback());
+                dto.setNumberOfPaybackSchedules(group_member.getNumberOfPaybackSchedules());
+                dto.setTotalAmountToReceive(group_member.getTotalAmountToReceive());
+                dto.setInterestPaid(group_member.getInterestPaid());
+                dto.setPaidDate(group_member.getPaidDate() != null ? formatter.format(group_member.getPaidDate()) : "");
+
+            }
+
+        } catch (Exception ex) {
+            logger.error("An error occured while converting from esusu group member to esusu group member dto. ", ex);
+        }
+        return dto;
+    }
+
+    public EsusuRepaymentScheduleDto EsusuRepaymentScheduleToDto(EsusuRepaymentSchedule entity) {
+        EsusuRepaymentScheduleDto dto = new EsusuRepaymentScheduleDto();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        try {
+            if (entity != null) {
+                dto.setId(entity.getId());
+                dto.setEsusuGroupId(entity.getEsusuGroup().getId());
+                dto.setEsusuGroupMemberId(entity.getId());
+                dto.setInterestAmount(entity.getInterestAmount());
+                dto.setMemberProfileId(entity.getMemberProfile().getId());
+                dto.setPrincipalAmount(entity.getPrincipalAmount());
+                dto.setPaid(entity.getPaid());
+                dto.setPaidDate(entity.getPaidDate() != null ? formatter.format(entity.getPaidDate()) : "");
+                dto.setRepaymentDate(entity.getRepaymentDate() != null ? formatter.format(entity.getRepaymentDate()) : "");
+                dto.setTotalAmount(entity.getTotalAmount());
+
+            }
+        } catch (Exception ex) {
+            logger.error("An error occured while converting from esusu repayment schedule to dto. ", ex);
+        }
+        return dto;
+    }
+
 }

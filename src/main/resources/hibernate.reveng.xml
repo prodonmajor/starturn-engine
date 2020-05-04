@@ -8,22 +8,27 @@
         <!--<sql-type jdbc-type="DECIMAL" hibernate-type="java.lang.Double"/>-->
     </type-mapping>
     
-  <table-filter match-name="CONTRIBUTION_FREQUENCY"/>
-  <table-filter match-name="TARGET_SAVINGS_PLAN"/>
-  <table-filter match-name="ESUSU_GROUP_MEMBERS"/>
-  <table-filter match-name="REQUIREMENT"/>
-  <table-filter match-name="BANK"/>
-  <table-filter match-name="ESUSU_GROUP_INVITES"/>
-  <table-filter match-name="USER_TOKEN"/>
-  <table-filter match-name="MEMBER_PROFILE"/>
-  <table-filter match-name="TARGET_SAVINGS"/>
-  <table-filter match-name="ESUSU_GROUP"/>
-  <table-filter match-name="GENDER"/>
-  <table-filter match-name="TRANSACTION"/>
-  <table-filter match-name="TRANSACTION_TYPE"/>
-  <table-filter match-name="MEMBER_WALLET_TRANSACTION"/>
+    <table-filter match-name="CONTRIBUTION_FREQUENCY"/>
+    <table-filter match-name="TARGET_SAVINGS_PLAN"/>
+    <table-filter match-name="ESUSU_GROUP_MEMBERS"/>
+    <table-filter match-name="REQUIREMENT"/>
+    <table-filter match-name="BANK"/>
+    <table-filter match-name="ESUSU_GROUP_INVITES"/>
+    <table-filter match-name="USER_TOKEN"/>
+    <table-filter match-name="MEMBER_PROFILE"/>
+    <table-filter match-name="TARGET_SAVINGS"/>
+    <table-filter match-name="ESUSU_GROUP"/>
+    <table-filter match-name="GENDER"/>
+    <table-filter match-name="TRANSACTION"/>
+    <table-filter match-name="TRANSACTION_TYPE"/>
+    <table-filter match-name="MEMBER_WALLET_TRANSACTION"/>
+    <table-filter match-name="MEMBER_WALLET"/>
+    <table-filter match-name="PAYMENT_TYPE"/>
+    <table-filter match-name="INTEREST_DISBURSEMENT_TYPE"/>
+    <table-filter match-name="ESUSU_REPAYMENT_SCHEDULE"/>
+    <table-filter match-name="OPERATOR_ESUSU_INTEREST" />
   
-  <table name="BANK">
+    <table name="BANK">
         <primary-key>
             <generator class="assigned"/>
             <key-column name="id" type="int"/>
@@ -119,5 +124,35 @@
             <generator class="assigned"/>
             <key-column name="id" type="int"/>
         </primary-key>
+    </table>
+    <table name="MEMBER_WALLET">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    <table name="PAYMENT_TYPE">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    <table name="INTEREST_DISBURSEMENT_TYPE">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    <table name="ESUSU_REPAYMENT_SCHEDULE">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
+    </table>
+    <table name="OPERATOR_ESUSU_INTEREST">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key> 
     </table>
 </hibernate-reverse-engineering>

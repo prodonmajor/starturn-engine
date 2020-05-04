@@ -5,10 +5,15 @@
  */
 package com.starturn.engine.database.query;
 
+import com.starturn.engine.database.entities.EsusuGroup;
 import com.starturn.engine.database.entities.EsusuGroupInvites;
+import com.starturn.engine.database.entities.EsusuGroupMembers;
+import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
 import com.starturn.engine.database.entities.MemberProfile;
+import com.starturn.engine.database.entities.MemberWallet;
 import com.starturn.engine.database.entities.UserToken;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -80,4 +85,9 @@ public interface MemberServiceQuery {
     public List<EsusuGroupInvites> viewAllRejectedGroupInvitations(int groupId) throws Exception;
     public List<UserToken> retrieveValidTokens() throws Exception;
     public UserToken retrieveTokenByEmail(String email) throws Exception;
+    public List<EsusuGroup> viewEsusuGroupByCreator(String creatorUsername) throws Exception;
+    public boolean arrangeEsusGroupCollection(Map<EsusuGroupMembers, List<EsusuRepaymentSchedule>> records, EsusuGroup group) throws Exception;
+    public MemberWallet getMemberWallet(int memberProfileId) throws Exception;
+    public List<EsusuGroupMembers> viewEsusuGroupMembers(int groupId) throws Exception;
+    public List<EsusuRepaymentSchedule> viewGroupMemberRepaymentSchedules(int esusuGroupMemberId) throws Exception;
 }

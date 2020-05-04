@@ -7,12 +7,16 @@ package com.starturn.engine.database.query.impl;
 
 import com.starturn.engine.database.entities.EsusuGroup;
 import com.starturn.engine.database.entities.EsusuGroupInvites;
+import com.starturn.engine.database.entities.EsusuGroupMembers;
+import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
 import com.starturn.engine.database.entities.MemberProfile;
+import com.starturn.engine.database.entities.MemberWallet;
 import com.starturn.engine.database.entities.UserToken;
 import com.starturn.engine.database.query.MemberServiceQuery;
 import com.starturn.engine.database.util.HibernateDataAccess;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Join;
@@ -374,5 +378,141 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
             dao.closeSession();
         }
         return profile;
+    }
+
+    @Override
+    public boolean arrangeEsusGroupCollection(Map<EsusuGroupMembers, List<EsusuRepaymentSchedule>> records, EsusuGroup group) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        boolean applied = false;
+        try {
+            dao.startOperation();
+            records.forEach((key, value) -> {
+                dao.createUpdateObject(key);
+                if (value != null) {
+                    value.forEach(repaymentSchedule -> {
+                        dao.createUpdateObject(repaymentSchedule);
+                    });
+                }
+
+            });
+            dao.createUpdateObject(group);
+            dao.commit();
+            applied = true;
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return applied;
+    }
+
+    @Override
+    public List<EsusuGroup> viewEsusuGroupByCreator(String creatorUsername) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        List<EsusuGroup> invites = new ArrayList<>();
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<EsusuGroup> cr = cb.createQuery(EsusuGroup.class);
+
+            Root<EsusuGroup> root = cr.from(EsusuGroup.class);
+
+            cr.select(root).where(cb.equal(root.get("createdByUsername"), creatorUsername));
+
+            Query<EsusuGroup> query = dao.getSession().createQuery(cr);
+            invites = query.getResultList();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return invites;
+    }
+
+    @Override
+    public MemberWallet getMemberWallet(int memberProfileId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        MemberWallet wallet;
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<MemberWallet> cr = cb.createQuery(MemberWallet.class);
+
+            Root<MemberWallet> root = cr.from(MemberWallet.class);
+            Join<MemberWallet, MemberProfile> member_join = root.join("memberProfile");
+            cr.select(root).where(cb.equal(member_join.get("id"), memberProfileId));
+
+            Query<MemberWallet> query = dao.getSession().createQuery(cr);
+            wallet = query.getSingleResult();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return wallet;
+    }
+
+    @Override
+    public List<EsusuGroupMembers> viewEsusuGroupMembers(int groupId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        List<EsusuGroupMembers> groupmembers = new ArrayList<>();
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<EsusuGroupMembers> cr = cb.createQuery(EsusuGroupMembers.class);
+
+            Root<EsusuGroupMembers> root = cr.from(EsusuGroupMembers.class);
+            Join<EsusuGroupMembers, EsusuGroup> group_join = root.join("esusuGroup");
+            cr.select(root).where(cb.equal(group_join.get("id"), groupId));
+
+            Query<EsusuGroupMembers> query = dao.getSession().createQuery(cr);
+            groupmembers = query.getResultList();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return groupmembers;
+    }
+
+    @Override
+    public List<EsusuRepaymentSchedule> viewGroupMemberRepaymentSchedules(int esusuGroupMemberId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        List<EsusuRepaymentSchedule> repaymentSchedules = new ArrayList<>();
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<EsusuRepaymentSchedule> cr = cb.createQuery(EsusuRepaymentSchedule.class);
+
+            Root<EsusuRepaymentSchedule> root = cr.from(EsusuRepaymentSchedule.class);
+            Join<EsusuRepaymentSchedule, EsusuGroupMembers> group_join = root.join("esusuGroupMembers");
+            cr.select(root).where(cb.equal(group_join.get("id"), esusuGroupMemberId));
+
+            Query<EsusuRepaymentSchedule> query = dao.getSession().createQuery(cr);
+            repaymentSchedules = query.getResultList();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return repaymentSchedules;
     }
 }

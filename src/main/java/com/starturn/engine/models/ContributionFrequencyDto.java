@@ -5,20 +5,19 @@
  */
 package com.starturn.engine.models;
 
-import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
 /**
  *
- * @author Administrator
+ * @author IDOKO EMMANUEL
  */
 @Getter
 @Setter
 @ToString
-public class EsusuGroupMembersWrapperDTO {
+public class ContributionFrequencyDto {
 
-    private List<EsusuGroupMemberDTO> groupMembers;
-    private String collectionDate;
+    private Integer id;
+    private String name;
 }

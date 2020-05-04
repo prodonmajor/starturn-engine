@@ -1,46 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE hibernate-configuration PUBLIC "-//Hibernate/Hibernate Configuration DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
-  <session-factory>
-    <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
-    <!--<property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>-->
-    <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
-    <property name="hibernate.connection.url">jdbc:mysql://198.199.91.162:3306/starturn?useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=UTC</property>
-    <!--<property name="hibernate.connection.url">jdbc:mysql://localhost:3306/starturn?useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=UTC</property>-->
-    <property name="hibernate.connection.username">starturn_db_user</property>
-    <property name="hibernate.connection.password">Password@1</property>
-    <property name="hibernate.c3p0.max_size">200</property>
-    <property name="hibernate.c3p0.min_size">30</property>
-    <property name="hibernate.c3p0.acquire_increment">200</property>
-    <property name="hibernate.c3p0.idle_test_period">120</property>
-    <!--<property name="hibernate.c3p0.max_statements">2000</property>-->
-    <property name="hibernate.c3p0.max_administrative_task_time">60</property>
-    <property name="hibernate.c3p0.timeout">100</property>
-    <property name="hibernate.c3p0.validate">true</property>
-    <property name="hibernate.jdbc.batch_size">50</property>
-    <property name="hibernate.order_inserts">true</property>
-    <property name="hibernate.order_updates">true</property>
-    <property name="hibernate.show_sql">true</property>
-    <property name="hibernate.search.default.directory_provider">filesystem</property>
-    <property name="hibernate.search.default.indexBase">/var/lucene/indexes</property>
-    <mapping class="com.starturn.engine.database.entities.MemberWalletTransaction"/>
-    <mapping class="com.starturn.engine.database.entities.UserGroupRequirement"/>
-    <mapping class="com.starturn.engine.database.entities.Gender"/>
-    <mapping class="com.starturn.engine.database.entities.RequirementGroupAccess"/>
-    <mapping class="com.starturn.engine.database.entities.Transaction"/>
-    <mapping class="com.starturn.engine.database.entities.RequirementGroup"/>
-    <mapping class="com.starturn.engine.database.entities.Bank"/>
-    <mapping class="com.starturn.engine.database.entities.Requirement"/>
-    <mapping class="com.starturn.engine.database.entities.UserGroup"/>
-    <mapping class="com.starturn.engine.database.entities.TargetSavings"/>
-    <mapping class="com.starturn.engine.database.entities.EsusuGroupInvites"/>
-    <mapping class="com.starturn.engine.database.entities.MemberProfile"/>
-    <mapping class="com.starturn.engine.database.entities.EsusuGroup"/>
-    <mapping class="com.starturn.engine.database.entities.UserToken"/>
-    <mapping class="com.starturn.engine.database.entities.EsusuGroupMembers"/>
-    <mapping class="com.starturn.engine.database.entities.ContributionFrequency"/>
-    <mapping class="com.starturn.engine.database.entities.EnvironmentalProperty"/>
-    <mapping class="com.starturn.engine.database.entities.TargetSavingsPlan"/>
-    <mapping class="com.starturn.engine.database.entities.TransactionType"/>
-  </session-factory>
+    <session-factory>
+        <property name="hibernate.dialect">org.hibernate.dialect.MySQLDialect</property>
+        <!--<property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>-->
+        <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+       <property name="hibernate.connection.url">jdbc:mysql://198.199.91.162:3306/starturn?useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=UTC</property>
+       <!-- <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/starturn?useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=UTC</property>-->
+        <!--<property name="hibernate.connection.username">root</property>-->
+        <property name="hibernate.connection.username">starturn_db_user</property>
+        <property name="hibernate.connection.password">Password@1</property>
+        <property name="hibernate.c3p0.max_size">200</property>
+        <property name="hibernate.c3p0.min_size">30</property>
+        <property name="hibernate.c3p0.acquire_increment">200</property>
+        <property name="hibernate.c3p0.idle_test_period">120</property>
+        <!--<property name="hibernate.c3p0.max_statements">2000</property>-->
+        <property name="hibernate.c3p0.max_administrative_task_time">60</property>
+        <property name="hibernate.c3p0.timeout">100</property>
+        <property name="hibernate.c3p0.validate">true</property>
+        <property name="hibernate.jdbc.batch_size">50</property>
+        <property name="hibernate.order_inserts">true</property>
+        <property name="hibernate.order_updates">true</property>
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.search.default.directory_provider">filesystem</property>
+        <property name="hibernate.search.default.indexBase">/var/lucene/indexes</property>
+        <mapping class="com.starturn.engine.database.entities.MemberWalletTransaction"/>
+        <mapping class="com.starturn.engine.database.entities.UserGroupRequirement"/>
+        <mapping class="com.starturn.engine.database.entities.Gender"/>
+        <mapping class="com.starturn.engine.database.entities.RequirementGroupAccess"/>
+        <mapping class="com.starturn.engine.database.entities.Transaction"/>
+        <mapping class="com.starturn.engine.database.entities.RequirementGroup"/>
+        <mapping class="com.starturn.engine.database.entities.Bank"/>
+        <mapping class="com.starturn.engine.database.entities.Requirement"/>
+        <mapping class="com.starturn.engine.database.entities.UserGroup"/>
+        <mapping class="com.starturn.engine.database.entities.TargetSavings"/>
+        <mapping class="com.starturn.engine.database.entities.EsusuGroupInvites"/>
+        <mapping class="com.starturn.engine.database.entities.MemberProfile"/>
+        <mapping class="com.starturn.engine.database.entities.EsusuGroup"/>
+        <mapping class="com.starturn.engine.database.entities.UserToken"/>
+        <mapping class="com.starturn.engine.database.entities.EsusuGroupMembers"/>
+        <mapping class="com.starturn.engine.database.entities.ContributionFrequency"/>
+        <mapping class="com.starturn.engine.database.entities.EnvironmentalProperty"/>
+        <mapping class="com.starturn.engine.database.entities.TargetSavingsPlan"/>
+        <mapping class="com.starturn.engine.database.entities.TransactionType"/>
+        <mapping class="com.starturn.engine.database.entities.EsusuRepaymentSchedule"/>
+        <mapping class="com.starturn.engine.database.entities.InterestDisbursementType"/>
+        <mapping class="com.starturn.engine.database.entities.MemberWallet"/>
+        <mapping class="com.starturn.engine.database.entities.PaymentType"/>
+        <mapping class="com.starturn.engine.database.entities.OperatorEsusuInterest"/>
+    </session-factory>
 </hibernate-configuration>

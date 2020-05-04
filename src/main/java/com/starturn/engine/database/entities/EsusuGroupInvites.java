@@ -35,11 +35,12 @@ public class EsusuGroupInvites  implements java.io.Serializable {
      private Date responseDate;
      private Date invitedDate;
      private String invitedByUsername;
+     private Boolean treated;
 
     public EsusuGroupInvites() {
     }
 
-    public EsusuGroupInvites(EsusuGroup esusuGroup, MemberProfile memberProfile, Boolean accepted, Boolean rejected, Date responseDate, Date invitedDate, String invitedByUsername) {
+    public EsusuGroupInvites(EsusuGroup esusuGroup, MemberProfile memberProfile, Boolean accepted, Boolean rejected, Date responseDate, Date invitedDate, String invitedByUsername,Boolean treated) {
        this.esusuGroup = esusuGroup;
        this.memberProfile = memberProfile;
        this.accepted = accepted;
@@ -47,6 +48,7 @@ public class EsusuGroupInvites  implements java.io.Serializable {
        this.responseDate = responseDate;
        this.invitedDate = invitedDate;
        this.invitedByUsername = invitedByUsername;
+       this.treated = treated;
     }
    
      @Id @GeneratedValue(strategy=IDENTITY)
@@ -139,6 +141,15 @@ public class EsusuGroupInvites  implements java.io.Serializable {
     
     public void setInvitedByUsername(String invitedByUsername) {
         this.invitedByUsername = invitedByUsername;
+    }
+
+    @Column(name="treated")
+    public Boolean getTreated() {
+        return treated;
+    }
+
+    public void setTreated(Boolean treated) {
+        this.treated = treated;
     }
 
 

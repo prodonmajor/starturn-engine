@@ -100,14 +100,14 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
                 }
                 
                  //check if user has accepted terms and conditions
-                if (memberProfile.getAccpetedTermsCondition() != null && !memberProfile.getAccpetedTermsCondition()) {
-                    logger.info("The account, {}, has not accepted terms and conditions of use.", username);
-                    errorMessage.setMessage("The account, " + username + ", has not accepted terms and conditions of use.");
-                    
-                    loginGeniuneFail = true;
-                    loginGeniuneFailMessage = "The account, " + username + ", has not accepted terms and conditions of use.";
-                    throw new UsernameNotFoundException(loginGeniuneFailMessage);
-                }
+//                if (memberProfile.getAccpetedTermsCondition() != null && !memberProfile.getAccpetedTermsCondition()) {
+//                    logger.info("The account, {}, has not accepted terms and conditions of use.", username);
+//                    errorMessage.setMessage("The account, " + username + ", has not accepted terms and conditions of use.");
+//                    
+//                    loginGeniuneFail = true;
+//                    loginGeniuneFailMessage = "The account, " + username + ", has not accepted terms and conditions of use.";
+//                    throw new UsernameNotFoundException(loginGeniuneFailMessage);
+//                }
                 
                 return new UsernamePasswordAuthenticationToken(username, password, getGrantedAuthorities());
             } else {
