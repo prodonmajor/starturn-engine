@@ -327,4 +327,15 @@ public class RequestController {
     public ResponseEntity<?> viewEsusuGroupMembers(@RequestParam(value = "esusuGroupId") int esusuGroupId) throws Exception{
         return logic.viewEsusuGroupMembers(esusuGroupId);
     }
+    
+    @GetMapping("/builddatabaseindex")
+    @ApiOperation(value = "Extension Requirement")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class),
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class),
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> buildDatabaseIndex() throws Exception {
+        return logic.buildDatabaseIndex();
+    }
 }

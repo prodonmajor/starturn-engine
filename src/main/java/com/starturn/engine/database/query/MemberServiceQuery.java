@@ -90,4 +90,6 @@ public interface MemberServiceQuery {
     public MemberWallet getMemberWallet(int memberProfileId) throws Exception;
     public List<EsusuGroupMembers> viewEsusuGroupMembers(int groupId) throws Exception;
     public List<EsusuRepaymentSchedule> viewGroupMemberRepaymentSchedules(int esusuGroupMemberId) throws Exception;
+    public List<EsusuGroup> retrieveAllGroups() throws Exception;
+    public boolean buildDatabaseIndex() throws Exception;
 }

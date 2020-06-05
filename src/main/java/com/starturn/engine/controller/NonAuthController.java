@@ -38,7 +38,7 @@ public class NonAuthController {
     @PostMapping("/signup")
     @ApiOperation(value = "New member registration / sign up")
     @ApiResponses(value = {
-        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class),
+        @ApiResponse(code = 200, message = "successful", response = MemberProfileDTO.class),
         @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class),
         @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
     })

@@ -24,6 +24,7 @@ public class EmailPlaceholder {
     private String transaction_date;
     private long transaction_units;
     private String emailBody;
+    private String token;
     
     public EmailPlaceholder() {
     }
@@ -139,7 +140,14 @@ public class EmailPlaceholder {
     public void setEmailBody(String emailBody) {
         this.emailBody = emailBody;
     }
-    
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
     
     
 }

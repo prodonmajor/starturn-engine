@@ -9,21 +9,31 @@ import com.starturn.engine.database.entities.EsusuGroup;
 import com.starturn.engine.database.entities.EsusuGroupInvites;
 import com.starturn.engine.database.entities.EsusuGroupMembers;
 import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
+import com.starturn.engine.database.entities.InterestDisbursementType;
 import com.starturn.engine.database.entities.MemberProfile;
 import com.starturn.engine.database.entities.MemberWallet;
 import com.starturn.engine.database.entities.UserToken;
 import com.starturn.engine.database.query.MemberServiceQuery;
+import com.starturn.engine.database.util.CustomIndexerProgressMonitor;
 import com.starturn.engine.database.util.HibernateDataAccess;
+import java.math.BigDecimal;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import javax.persistence.EntityManager;
+import javax.persistence.Tuple;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Join;
 import javax.persistence.criteria.Root;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.CacheMode;
 import org.hibernate.query.Query;
+import org.hibernate.search.FullTextSession;
+import org.hibernate.search.Search;
 
 /**
  *
@@ -32,6 +42,7 @@ import org.hibernate.query.Query;
 public class MemberServiceQueryImpl implements MemberServiceQuery {
 
     private static final Logger logger = LogManager.getLogger(MemberServiceQueryImpl.class);
+    EntityManager em;
 
     @Override
     public boolean checkUserExists(String username) throws Exception {
@@ -514,5 +525,96 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
             dao.closeSession();
         }
         return repaymentSchedules;
+    }
+
+    @Override
+    public List<EsusuGroup> retrieveAllGroups() throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        List<EsusuGroup> invites = new ArrayList<>(); 
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<Tuple> cr = cb.createTupleQuery();
+
+            Root<EsusuGroup> root = cr.from(EsusuGroup.class);
+
+            cr.multiselect(
+                    root.get("id"),
+                    root.get("name"),
+                    root.get("description"),
+                    root.get("contributionAmount"),
+                    root.get("numberOfContributors"),
+                    root.get("startDate"),
+                    root.get("endDate"),
+                    root.get("createdByUsername"),
+                    root.get("circleCompleted"),
+                    root.get("isWithInterest"),
+                    root.get("positionArranged"),
+                    root.get("monthlyCollectionAmount"),
+                    root.get("creationDate"),
+                    root.get("interestDisbursementType")
+            );
+            cr.orderBy(cb.desc(root.get("creationDate")));
+
+            Query<Tuple> query = dao.getSession().createQuery(cr);
+            List<Tuple> tupleResult = query.getResultList();
+            for (Tuple t : tupleResult) {
+                EsusuGroup group = new EsusuGroup();
+                group.setId((int) t.get(0));
+                group.setName((String) t.get(1));
+                group.setDescription((String) t.get(2));
+                group.setContributionAmount((BigDecimal) t.get(3));
+                group.setNumberOfContributors((Integer)t.get(4));
+                group.setStartDate((Date)t.get(5));
+                group.setEndDate((Date)t.get(6));
+                group.setCreatedByUsername((String)t.get(7));
+                group.setCircleCompleted((Boolean) t.get(8));
+                group.setIsWithInterest((Boolean) t.get(9));
+                group.setPositionArranged((Boolean) t.get(10));
+                group.setMonthlyCollectionAmount((BigDecimal) t.get(11));
+                group.setCreationDate((Date) t.get(12));
+                group.setInterestDisbursementType((InterestDisbursementType) t.get(13));
+                invites.add(group);
+            }
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return invites;
+    }
+    
+    @Override
+    public boolean buildDatabaseIndex() throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        boolean done = false;
+        try {
+            dao.startOperation();
+
+            FullTextSession fullTextSession = Search.getFullTextSession(dao.getSession());
+            fullTextSession
+                    .createIndexer()
+                    .typesToIndexInParallel(2)
+                    .batchSizeToLoadObjects(2000) //sql server cannot go beyond 2100 
+                    .cacheMode(CacheMode.IGNORE)
+                    .threadsToLoadObjects(20)
+                    .idFetchSize(150)
+                    .progressMonitor(new CustomIndexerProgressMonitor())
+                    .startAndWait();
+
+            dao.commit();
+            done = true;
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return done;
     }
 }

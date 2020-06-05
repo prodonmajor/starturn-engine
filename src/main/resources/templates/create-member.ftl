@@ -28,6 +28,7 @@
  <p>Application URL: Click <a href="http://starturn.ng/">here</a>  or copy and paste the link address in your browser address bar - <a href="http://myeasycoop.com">http://myeasycoop.com/</a> <p>
  <p>Username: ${member_username}</p>
  <p>Password: ${password}</p>
+ <p>Validation Token: ${token}</p>
 
  <p>Log in anytime to check your contribution balance, make withdrawals and more.</p>
  <p>For assistance, please contact customer service or technical support, 

@@ -132,8 +132,6 @@ public class RequestLogic {
         token.setUsername(profile.getUsername());
         token.setValidated(Boolean.FALSE);
 
-        String token_validity = "5";
-
         boolean created = memberService.userSignUp(profile, token);
         if (!created) {
             return ResponseEntity.badRequest()
@@ -150,6 +148,7 @@ public class RequestLogic {
             msgDetails.setText(message);
 
             smsAlert.sendSingleTextMessage(msgDetails);
+            logger.info("sent text message to: {} ", dto.getPhoneNumber());
         }
 
         if (dto.getEmailAddress() != null && !dto.getEmailAddress().trim().isEmpty()) {
@@ -159,6 +158,7 @@ public class RequestLogic {
             placeHolder.setCoop_name("Starturn");
             placeHolder.setUsername(dto.getUsername());
             placeHolder.setPassword(dto.getPassword());
+            placeHolder.setToken(token.getToken());
 
             EmailMessage msgDetails = new EmailMessage();
             msgDetails.setSubject("Starturn Esusu Signup");
@@ -168,9 +168,10 @@ public class RequestLogic {
             msgDetails.setPlaceholder(placeHolder);
 
             emailAlert.sendSingleEmailOffice365(msgDetails);
+            logger.info("sent email message to: {} ", dto.getEmailAddress());
         }
-
-        return ResponseEntity.ok(new ResponseInformation("Sign up was successful"));
+        MemberProfile newProfile = memberService.getUserInformation(profile.getUsername());
+        return ResponseEntity.ok(modelMapping.memberToDtoMapping(newProfile));
     }
 
     public ResponseEntity<?> validateToken(String token) throws Exception {
@@ -179,6 +180,11 @@ public class RequestLogic {
                     .body(new ResponseInformation("The token does not exist"));
         }
         UserToken user_token = memberService.retrieveToken(token);
+        long token_expired_minutes = util.getDateDiffInMins(user_token.getDateCreated());
+        if (token_expired_minutes > 5) {
+            user_token.setExpired(Boolean.TRUE);
+            daoService.saveUpdateEntity(user_token);
+        }
 
         if (user_token.getExpired()) {
             return ResponseEntity.badRequest()
@@ -188,16 +194,7 @@ public class RequestLogic {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The token has been validated already."));
         }
-        if (user_token.getExpired()) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The token has expired."));
 
-        }
-        if (util.getDateDiffInMins(user_token.getDateCreated()) > 5) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The token has expired."));
-
-        }
         MemberProfile profile = memberService.getUserInformation(user_token.getUsername());
         if (profile.getActive()) {
             return ResponseEntity.badRequest()
@@ -523,7 +520,7 @@ public class RequestLogic {
         List<Object> tosave = new ArrayList<>();
 
         if (!status) {
-            invite.setRejected(status);
+            invite.setRejected(true);
         } else {
             invite.setAccepted(status);
             group_member.setAmountPaid(BigDecimal.ZERO);
@@ -533,10 +530,16 @@ public class RequestLogic {
             group_member.setEsusuGroup(group);
             group_member.setExpectedAmount(group.getMonthlyCollectionAmount());
             group_member.setExpectedCollectionDate(null);
-            group_member.setMemberProfile(initiator);
+            group_member.setMemberProfile(invite.getMemberProfile());
             group_member.setPaid(false);
+            group_member.setInterestAmountToReceive(BigDecimal.ZERO);
+            group_member.setInterestPaid(false);
+            group_member.setMonthlyInterestAmountPayback(BigDecimal.ZERO);
+            group_member.setInterestAmountToPayback(BigDecimal.ZERO);
+            group_member.setNumberOfPaybackSchedules(0);
             tosave.add(group_member);
         }
+
         invite.setResponseDate(new Date());
         invite.setTreated(true);
         tosave.add(invite);
@@ -962,7 +965,7 @@ public class RequestLogic {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
 
-        if (dto.getGroupMembers().size() < 1) {
+        if (dto.getGroupMembers() == null || dto.getGroupMembers().size() < 1) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The esusu group members list cannot be empty, "
                             + "Please contact Administrator"));
@@ -1189,19 +1192,22 @@ public class RequestLogic {
 
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         List<EsusuGroupDTO> list_out = new ArrayList<>();
-        List<EsusuGroup> all_groups = daoService.getAllEntityRecords(EsusuGroup.class);
+        //List<EsusuGroup> all_groups = daoService.getAllEntityRecords(EsusuGroup.class);
+        logger.info("gone to db");
+        List<EsusuGroup> all_groups = memberService.retrieveAllGroups();
+        logger.info("back from db with {} ", all_groups.size());
         InterestDisbursementType disburseType_1 = (InterestDisbursementType) daoService.getEntity(InterestDisbursementType.class, 1);
         InterestDisbursementType disburseType_2 = (InterestDisbursementType) daoService.getEntity(InterestDisbursementType.class, 2);
         if (all_groups.isEmpty()) {
             return ResponseEntity.ok(new ResponseInformation("No record found"));
         }
 
-        all_groups.stream().forEach(inv -> {
+        all_groups.parallelStream().forEach(inv -> {
             EsusuGroupDTO dto = new EsusuGroupDTO();
 
             dto.setId(inv.getId());
             dto.setContributionAmount(inv.getContributionAmount());
-            dto.setContributionFrequencyId(inv.getContributionFrequency().getId());
+            //dto.setContributionFrequencyId(inv.getContributionFrequency().getId());
             dto.setCircleEnded(inv.getCircleCompleted());
             dto.setCreatedByUsername(inv.getCreatedByUsername());
             dto.setCreationDate(formatter.format(inv.getCreationDate()));
@@ -1396,10 +1402,10 @@ public class RequestLogic {
                         .body(new ResponseInformation("The specified group id is invalid."));
             }
             EsusuGroup esusuGroup = (EsusuGroup) daoService.getEntity(EsusuGroup.class, esusuGroupId);
-            if (esusuGroup.getPositionArranged() != null && !esusuGroup.getPositionArranged()) {
-                return ResponseEntity.badRequest()
-                        .body(new ResponseInformation("The group collection position has not been prepared."));
-            }
+//            if (esusuGroup.getPositionArranged() != null && !esusuGroup.getPositionArranged()) {
+//                return ResponseEntity.badRequest()
+//                        .body(new ResponseInformation("The group collection position has not been prepared."));
+//            }
             List<EsusuGroupMembers> members = memberService.viewEsusuGroupMembers(esusuGroupId);
             if (members.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -1414,5 +1420,18 @@ public class RequestLogic {
             logger.error("An error occured while preparing list. ", ex);
         }
         return ResponseEntity.ok(list_out);
+    }
+
+    public ResponseEntity<?> buildDatabaseIndex() throws Exception {
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+
+        boolean done = memberService.buildDatabaseIndex();
+        if (!done) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The database could not make the necessary change. "
+                            + "Please contact Administrator"));
+        }
+
+        return ResponseEntity.ok(new ResponseInformation("Successful"));
     }
 }

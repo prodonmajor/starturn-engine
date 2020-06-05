@@ -34,6 +34,7 @@ public class MemberProfileDTO {
     private String phoneNumber;
     private String gender;
     private String password;
+    private String bvn;
     @NotNull(message = "accepted terms and conditions must be specified")
     private Boolean accpetedTermsCondition;
     @NotNull(message = "locked cannot be null")

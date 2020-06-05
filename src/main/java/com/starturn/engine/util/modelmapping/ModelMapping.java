@@ -9,6 +9,7 @@ import com.starturn.engine.database.entities.ContributionFrequency;
 import com.starturn.engine.database.entities.EsusuGroup;
 import com.starturn.engine.database.entities.EsusuGroupMembers;
 import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
+import com.starturn.engine.database.entities.InterestDisbursementType;
 import com.starturn.engine.database.entities.MemberProfile;
 import com.starturn.engine.database.query.factory.ServiceQueryFactory;
 import com.starturn.engine.models.EsusuGroupDTO;
@@ -71,7 +72,7 @@ public class ModelMapping {
                         getEntity(MemberProfile.class, dto.getId());
             }
 
-            memberProfile.setUsername(dto.getUsername());
+            memberProfile.setUsername(dto.getEmailAddress());
             memberProfile.setName(dto.getName());
             memberProfile.setEmailAddress(dto.getEmailAddress());
             memberProfile.setPhoneNumber(dto.getPhoneNumber());
@@ -131,6 +132,11 @@ public class ModelMapping {
                     ContributionFrequency frequency = (ContributionFrequency) ServiceQueryFactory.getDaoServiceQuery().getEntity(ContributionFrequency.class, dto.getContributionFrequencyId());
                     esusuGroup.setContributionFrequency(frequency);
                 }
+                if (dto.getInterest_disbursement_type_id() > 0 && ServiceQueryFactory.getDaoServiceQuery().
+                        checkObjectExists(InterestDisbursementType.class, dto.getInterest_disbursement_type_id())) {
+                    InterestDisbursementType disburseType = (InterestDisbursementType) ServiceQueryFactory.getDaoServiceQuery().getEntity(InterestDisbursementType.class, dto.getInterest_disbursement_type_id());
+                    esusuGroup.setInterestDisbursementType(disburseType);
+                }
 
                 esusuGroup.setCode(dto.getCode());
                 esusuGroup.setContributionAmount(dto.getContributionAmount());
@@ -144,7 +150,8 @@ public class ModelMapping {
                 esusuGroup.setStartDate(formatter.parse(dto.getStartDate()));
                 esusuGroup.setCircleCompleted(dto.getCircleEnded() != null ? dto.getCircleEnded() : false);
                 esusuGroup.setPositionArranged(dto.getPositionArranged() != null ? dto.getPositionArranged() : false);
-                
+                esusuGroup.setIsWithInterest(dto.getIsWithInterest());
+
             }
         } catch (Exception ex) {
             logger.error("An error occured while converting from esusu group entity to esusu group dto. ", ex);
@@ -159,14 +166,20 @@ public class ModelMapping {
             if (group_member != null) {
                 MemberProfile memberProfile = (MemberProfile) ServiceQueryFactory.getDaoServiceQuery().
                         getEntity(MemberProfile.class, group_member.getMemberProfile().getId());
+                logger.info("member id {}, name {}, amount to receive {}", group_member.getMemberProfile().getId(),
+                        memberProfile.getName(), group_member.getExpectedAmount());
                 dto.setId(group_member.getId());
                 dto.setAmountPaid(group_member.getAmountPaid());
-                dto.setCollectionPosition(Integer.parseInt(group_member.getCollectionPosition()));
+                if (group_member.getCollectionPosition() != null && !group_member.getCollectionPosition().isEmpty()) {
+                    dto.setCollectionPosition(Integer.parseInt(group_member.getCollectionPosition()));
+                } else {
+                    dto.setCollectionPosition(0);
+                }
                 dto.setCreatedByUsername(group_member.getCreatedByUsername());
                 dto.setCreationDate(formatter.format(group_member.getCreationDate()));
                 dto.setEsusuGroupId(group_member.getEsusuGroup().getId());
                 dto.setExpectedAmount(group_member.getExpectedAmount());
-                dto.setExpectedCollectionDate(formatter.format(group_member.getExpectedCollectionDate()));
+                dto.setExpectedCollectionDate(group_member.getExpectedCollectionDate() != null ? formatter.format(group_member.getExpectedCollectionDate()) : "");
                 dto.setMemberProfileId(group_member.getMemberProfile().getId());
                 dto.setPaid(group_member.getPaid());
                 dto.setMemberName(memberProfile.getName());

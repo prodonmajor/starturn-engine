@@ -49,4 +49,6 @@ public class EsusuGroupDTO {
     private Integer interest_disbursement_type_id;
     private String interestDisbursementTypeName;
     private Boolean positionArranged;
+    @NotNull(message = "is with interest flag cannot be null")
+    private Boolean isWithInterest;
 }

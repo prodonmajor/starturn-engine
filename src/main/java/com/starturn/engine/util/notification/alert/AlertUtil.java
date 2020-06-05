@@ -68,11 +68,12 @@ public class AlertUtil {
 
         if (templateName.equalsIgnoreCase("create-member")) {
             model.put("firstName", placeholder.getFirst_name());
-            model.put("lastName", placeholder.getLast_name());
+            //model.put("lastName", placeholder.getLast_name());
             model.put("location", placeholder.getCoop_name());
             model.put("comp_name", placeholder.getCoop_name());
             model.put("member_username", placeholder.getUsername());
             model.put("password", placeholder.getPassword());
+            model.put("token", placeholder.getToken());
         }
 
         if (templateName.equalsIgnoreCase("increase-shares-limit")) {
