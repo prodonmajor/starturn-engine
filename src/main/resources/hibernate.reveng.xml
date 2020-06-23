@@ -27,6 +27,7 @@
     <table-filter match-name="INTEREST_DISBURSEMENT_TYPE"/>
     <table-filter match-name="ESUSU_REPAYMENT_SCHEDULE"/>
     <table-filter match-name="OPERATOR_ESUSU_INTEREST" />
+    <table-filter match-name="MEMBER_PROFILE_PICTURE"/>
   
     <table name="BANK">
         <primary-key>
@@ -154,5 +155,11 @@
             <generator class="assigned"/>
             <key-column name="id" type="int"/>
         </primary-key> 
+    </table>
+    <table name="MEMBER_PROFILE_PICTURE">
+        <primary-key>
+            <generator class="assigned"/>
+            <key-column name="id" type="int"/>
+        </primary-key>
     </table>
 </hibernate-reverse-engineering>

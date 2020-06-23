@@ -16,10 +16,12 @@ import com.starturn.engine.database.query.MemberServiceQuery;
 import com.starturn.engine.controller.businesslogic.async.AsyncRunner;
 import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
 import com.starturn.engine.database.entities.InterestDisbursementType;
+import com.starturn.engine.database.entities.MemberProfilePicture;
 import com.starturn.engine.database.entities.MemberWallet;
 import com.starturn.engine.facade.IAuthenticationFacade;
 import com.starturn.engine.models.ArrangeGroupMemberCollectionPositionDto;
 import com.starturn.engine.models.ArrangeGroupMemberCollectionPositionWrapperDto;
+import com.starturn.engine.models.BalanceDTO;
 import com.starturn.engine.models.ChangePasswordDTO;
 import com.starturn.engine.models.ContributionFrequencyDto;
 import com.starturn.engine.models.EsusuGroupDTO;
@@ -30,9 +32,12 @@ import com.starturn.engine.models.EsusuGroupMembersWrapperDto;
 import com.starturn.engine.models.EsusuRepaymentScheduleDto;
 import com.starturn.engine.models.InterestDisbursementTypeDto;
 import com.starturn.engine.models.MemberProfileDTO;
+import com.starturn.engine.models.MemberProfilePictureDTO;
 import com.starturn.engine.models.MemberWalletDto;
 import com.starturn.engine.models.response.ErrorMessage;
 import com.starturn.engine.models.response.ResponseInformation;
+import com.starturn.engine.multipart.PictureFileStorageService;
+import com.starturn.engine.util.BytesConverter;
 import com.starturn.engine.util.DateUtility;
 import com.starturn.engine.util.GeneralUtility;
 import com.starturn.engine.util.PolicyValidator;
@@ -42,8 +47,11 @@ import com.starturn.engine.util.notification.model.EmailPlaceholder;
 import com.starturn.engine.util.notification.model.MessageDetails;
 import com.starturn.engine.util.notification.thread.EmailAlertHelper;
 import com.starturn.engine.util.notification.thread.SmsAlertHelper;
+import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -55,17 +63,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  *
@@ -97,6 +105,12 @@ public class RequestLogic {
     IAuthenticationFacade authenticationFacade;
     private @Autowired
     AsyncRunner asyncRunner;
+    @Value("${file.profile-pic-dir}")
+    private String profilePictureBasePath;
+    private @Autowired
+    PictureFileStorageService pictureFileStorageService;
+    private @Autowired
+    BytesConverter converter;
 
     public ResponseEntity<?> signUp(MemberProfileDTO dto, BindingResult result) throws Exception {
 
@@ -1433,5 +1447,114 @@ public class RequestLogic {
         }
 
         return ResponseEntity.ok(new ResponseInformation("Successful"));
+    }
+    
+    public ResponseEntity<?> uploadMemberProfilePicture(MultipartFile file, Integer memberId) throws Exception {
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+       
+        if (!daoService.checkObjectExists(MemberProfile.class, memberId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified member id for upload of documents is not valid"));
+        }
+        MemberProfile memberProfile = (MemberProfile) daoService.getEntity(MemberProfile.class, memberId);
+
+        if (!Objects.equals(initiator.getId(), memberId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("You are not allowed to performed this operation on behalf of another member."));
+        }
+
+        if (memberProfile.getAccountClosed() != null && memberProfile.getAccountClosed()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("This account has been closed."));
+        }
+
+        MemberProfilePicture picture;
+        boolean hasPicture = memberService.checkMemberHasProfilePicture(memberId);
+
+        if (hasPicture) {
+            picture = memberService.getMemberProfilePicture(memberId);
+            String path = Paths.get(profilePictureBasePath, picture.getPicturepath()).toString();
+            File file_old = new File(path);
+            if (file_old.exists()) {
+                file_old.delete();
+
+                String fileName = pictureFileStorageService.storeFile(file);
+                picture.setMemberProfile(memberProfile);
+                picture.setPicturepath(fileName);
+
+            }
+
+        } else {
+            picture = new MemberProfilePicture();
+
+            String fileName = pictureFileStorageService.storeFile(file);
+            picture.setMemberProfile(memberProfile);
+            picture.setPicturepath(fileName);
+        }
+
+        boolean updated = daoService.saveUpdateEntity(picture);
+
+        if (!updated) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The database could not make the necessary change. "
+                                    + "Please contact Administrator"));
+        }
+
+        return ResponseEntity.ok(new ResponseInformation("successful"));
+    }
+
+    public ResponseEntity<?> viewMemberProfilePicture(Integer memberId) throws Exception {
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+
+        if (!daoService.checkObjectExists(MemberProfile.class, memberId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified member id is not valid"));
+        }
+
+        if (!memberService.checkMemberHasProfilePicture(memberId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("You currently do not have a profile picture"));
+        }
+
+        MemberProfilePicture picture = memberService.getMemberProfilePicture(memberId);
+        String path = Paths.get(profilePictureBasePath, picture.getPicturepath()).toString();
+        File file = new File(path);
+        byte[] read = Files.readAllBytes(file.toPath());
+        String encodedContents = converter.encodeToString(read);
+
+        MemberProfile memberProfile = (MemberProfile) daoService.getEntity(MemberProfile.class, memberId);
+
+
+        MemberProfilePictureDTO dto = new MemberProfilePictureDTO();
+        dto.setFileName(picture.getPicturepath());
+        dto.setFileContent(encodedContents);
+        dto.setMemberProfileId(memberId);
+        dto.setMemberName(memberProfile.getName());
+
+        return ResponseEntity.ok(dto);
+    }
+    
+    public ResponseEntity<?> getMemberBalances(Integer memberProfileId) throws Exception {
+        //coop admin authentication logic starts here
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+
+        if (!daoService.checkObjectExists(MemberProfile.class, memberProfileId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified member does not exist. "
+                                    + "You cannot carry out this function"));
+        }
+        MemberProfile memberProfile = (MemberProfile) daoService.getEntity(MemberProfile.class, memberProfileId);
+
+
+        BigDecimal compulsoryBalance = memberService.getMemberWalletBalance(memberProfileId);
+        BalanceDTO dto = new BalanceDTO();
+        if (compulsoryBalance == null) {
+            compulsoryBalance = new BigDecimal(0);
+        }
+        dto.setWalletBalance(compulsoryBalance);
+
+        return ResponseEntity.ok(dto);
     }
 }

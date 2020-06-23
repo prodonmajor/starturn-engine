@@ -240,6 +240,19 @@
             <artifactId>hibernate-c3p0</artifactId>
             <version>5.4.0.Final</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.10</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.2</version>
+            <type>jar</type>
+        </dependency>
+
         
         <!-- Hibernate Entity manager - Not needed here -->
         <!--<dependency>
@@ -250,18 +263,18 @@
         
         <!--         MS SQL JDBC for local
         -->  
-        <dependency>
+        <!--<dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.6</version>
-        </dependency>  
+        </dependency>  -->
         
         <!-- MS SQL JDBC for digitalocean -->
-        <!--        <dependency>
+        <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.11</version>
-        </dependency>            -->
+        </dependency>            
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-entitymanager</artifactId>

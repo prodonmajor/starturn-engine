@@ -10,8 +10,10 @@ import com.starturn.engine.database.entities.EsusuGroupInvites;
 import com.starturn.engine.database.entities.EsusuGroupMembers;
 import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
 import com.starturn.engine.database.entities.MemberProfile;
+import com.starturn.engine.database.entities.MemberProfilePicture;
 import com.starturn.engine.database.entities.MemberWallet;
 import com.starturn.engine.database.entities.UserToken;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -92,4 +94,8 @@ public interface MemberServiceQuery {
     public List<EsusuRepaymentSchedule> viewGroupMemberRepaymentSchedules(int esusuGroupMemberId) throws Exception;
     public List<EsusuGroup> retrieveAllGroups() throws Exception;
     public boolean buildDatabaseIndex() throws Exception;
+    public boolean checkMemberHasProfilePicture(int memberProfileId) throws Exception;
+
+    public MemberProfilePicture getMemberProfilePicture(int memberProfileId) throws Exception;
+    public BigDecimal getMemberWalletBalance(int memberProfileId) throws Exception;
 }

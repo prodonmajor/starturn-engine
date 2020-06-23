@@ -11,7 +11,9 @@ import com.starturn.engine.database.entities.EsusuGroupMembers;
 import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
 import com.starturn.engine.database.entities.InterestDisbursementType;
 import com.starturn.engine.database.entities.MemberProfile;
+import com.starturn.engine.database.entities.MemberProfilePicture;
 import com.starturn.engine.database.entities.MemberWallet;
+import com.starturn.engine.database.entities.MemberWalletTransaction;
 import com.starturn.engine.database.entities.UserToken;
 import com.starturn.engine.database.query.MemberServiceQuery;
 import com.starturn.engine.database.util.CustomIndexerProgressMonitor;
@@ -616,5 +618,88 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
             dao.closeSession();
         }
         return done;
+    }
+    
+    @Override
+    public boolean checkMemberHasProfilePicture(int memberProfileId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        Long count = 0l;
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<Long> cr = cb.createQuery(Long.class);
+
+            Root<MemberProfilePicture> root = cr.from(MemberProfilePicture.class);
+            Join<MemberProfilePicture, MemberProfile> member_join = root.join("memberProfile");
+            cr.select(cb.count(root)).where(cb.equal(member_join.get("id"), memberProfileId));
+
+            Query<Long> query = dao.getSession().createQuery(cr);
+            count = query.getSingleResult();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return count > 0;
+    }
+
+    @Override
+    public MemberProfilePicture getMemberProfilePicture(int memberProfileId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        MemberProfilePicture member = new MemberProfilePicture();
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<MemberProfilePicture> cr = cb.createQuery(MemberProfilePicture.class);
+
+            Root<MemberProfilePicture> root = cr.from(MemberProfilePicture.class);
+            Join<MemberProfilePicture, MemberProfile> member_join = root.join("memberProfile");
+            cr.select(root).where(cb.equal(member_join.get("id"), memberProfileId));
+
+            Query<MemberProfilePicture> query = dao.getSession().createQuery(cr);
+            member = query.getSingleResult();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return member;
+    }
+    
+    @Override
+    public BigDecimal getMemberWalletBalance(int memberProfileId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        BigDecimal balance = new BigDecimal(0);
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<BigDecimal> cr = cb.createQuery(BigDecimal.class);
+
+            Root<MemberWalletTransaction> root = cr.from(MemberWalletTransaction.class);
+            Join<MemberWalletTransaction, MemberProfile> member_join = root.join("memberProfile");
+            cr.select(cb.sum(root.get("amount"))).where(
+                    cb.equal(member_join.get("id"), memberProfileId)
+            );
+
+            Query<BigDecimal> query = dao.getSession().createQuery(cr);
+            balance = query.getSingleResult();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return balance;
     }
 }

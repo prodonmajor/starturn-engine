@@ -48,5 +48,6 @@
         <mapping class="com.starturn.engine.database.entities.MemberWallet"/>
         <mapping class="com.starturn.engine.database.entities.PaymentType"/>
         <mapping class="com.starturn.engine.database.entities.OperatorEsusuInterest"/>
+        <mapping class="com.starturn.engine.database.entities.MemberProfilePicture"/>
     </session-factory>
 </hibernate-configuration>
