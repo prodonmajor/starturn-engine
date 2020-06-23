@@ -6,7 +6,7 @@
         <!--<property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>-->
         <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
       <property name="hibernate.connection.url">jdbc:mysql://142.93.35.106:3306/starturn?useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=UTC</property>
-       <!--  <property name="hibernate.connection.url">jdbc:mysql://localhost:3306/starturn?useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=UTC</property>-->
+         <!--<property name="hibernate.connection.url">jdbc:mysql://localhost:3306/starturn?useUnicode=true&amp;useJDBCCompliantTimezoneShift=true&amp;useLegacyDatetimeCode=false&amp;serverTimezone=UTC</property>-->
         <!--<property name="hibernate.connection.username">root</property>-->
         <property name="hibernate.connection.username">starturn_db_user</property>
         <property name="hibernate.connection.password">Password@1</property>

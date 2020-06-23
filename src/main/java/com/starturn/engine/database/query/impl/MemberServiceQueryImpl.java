@@ -702,4 +702,59 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
         }
         return balance;
     }
+
+    @Override
+    public List<EsusuGroupMembers> viewEsusuGroupCollectors(int groupId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        List<EsusuGroupMembers> groupmembers = new ArrayList<>();
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<EsusuGroupMembers> cr = cb.createQuery(EsusuGroupMembers.class);
+
+            Root<EsusuGroupMembers> root = cr.from(EsusuGroupMembers.class);
+            Join<EsusuGroupMembers, EsusuGroup> group_join = root.join("esusuGroup");
+            cr.select(root).where(cb.equal(group_join.get("id"), groupId),
+                    cb.equal(root.get("paid"), true));
+
+            Query<EsusuGroupMembers> query = dao.getSession().createQuery(cr);
+            groupmembers = query.getResultList();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return groupmembers;
+    }
+
+    @Override
+    public List<EsusuGroupMembers> viewUserEsusuGroups(int memberProfileId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        List<EsusuGroupMembers> groupmembers = new ArrayList<>();
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<EsusuGroupMembers> cr = cb.createQuery(EsusuGroupMembers.class);
+
+            Root<EsusuGroupMembers> root = cr.from(EsusuGroupMembers.class);
+            Join<EsusuGroupMembers, MemberProfile> memberProfile_join = root.join("memberProfile");
+            cr.select(root).where(cb.equal(memberProfile_join.get("id"), memberProfileId));
+
+            Query<EsusuGroupMembers> query = dao.getSession().createQuery(cr);
+            groupmembers = query.getResultList();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return groupmembers;
+    }
 }

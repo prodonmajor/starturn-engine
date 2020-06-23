@@ -427,6 +427,8 @@ public class RequestLogic {
 
             List<String> not_found = new ArrayList<>();
             Set<String> repeating_ids = new HashSet<>();
+            
+            dto.getUsernames().add(group.getCreatedByUsername());
 
             for (String username : dto.getUsernames()) {
                 if (!memberService.checkUserExists(username)) {
@@ -994,7 +996,8 @@ public class RequestLogic {
                     .body(new ResponseInformation("This action has been performed already."));
         }
         int level = 1;
-        Date startDate = formatter.parse(dto.getCollectionDate());
+        //Date startDate = formatter.parse(dto.getCollectionDate());
+        Date startDate = group.getStartDate();
 
         ContributionFrequency contributionFrequency = (ContributionFrequency) daoService.getEntity(ContributionFrequency.class, group.getContributionFrequency().getId());
 
@@ -1416,10 +1419,7 @@ public class RequestLogic {
                         .body(new ResponseInformation("The specified group id is invalid."));
             }
             EsusuGroup esusuGroup = (EsusuGroup) daoService.getEntity(EsusuGroup.class, esusuGroupId);
-//            if (esusuGroup.getPositionArranged() != null && !esusuGroup.getPositionArranged()) {
-//                return ResponseEntity.badRequest()
-//                        .body(new ResponseInformation("The group collection position has not been prepared."));
-//            }
+
             List<EsusuGroupMembers> members = memberService.viewEsusuGroupMembers(esusuGroupId);
             if (members.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -1448,10 +1448,10 @@ public class RequestLogic {
 
         return ResponseEntity.ok(new ResponseInformation("Successful"));
     }
-    
+
     public ResponseEntity<?> uploadMemberProfilePicture(MultipartFile file, Integer memberId) throws Exception {
         MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
-       
+
         if (!daoService.checkObjectExists(MemberProfile.class, memberId)) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The specified member id for upload of documents is not valid"));
@@ -1473,8 +1473,7 @@ public class RequestLogic {
 
         if (hasPicture) {
             picture = memberService.getMemberProfilePicture(memberId);
-            String path = Paths.get(profilePictureBasePath, picture.getPicturepath()).toString();
-            File file_old = new File(path);
+            File file_old = new File(picture.getPicturepath());
             if (file_old.exists()) {
                 file_old.delete();
 
@@ -1488,6 +1487,7 @@ public class RequestLogic {
             picture = new MemberProfilePicture();
 
             String fileName = pictureFileStorageService.storeFile(file);
+            logger.info("file path {} ",fileName);
             picture.setMemberProfile(memberProfile);
             picture.setPicturepath(fileName);
         }
@@ -1497,7 +1497,7 @@ public class RequestLogic {
         if (!updated) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The database could not make the necessary change. "
-                                    + "Please contact Administrator"));
+                            + "Please contact Administrator"));
         }
 
         return ResponseEntity.ok(new ResponseInformation("successful"));
@@ -1517,24 +1517,22 @@ public class RequestLogic {
         }
 
         MemberProfilePicture picture = memberService.getMemberProfilePicture(memberId);
-        String path = Paths.get(profilePictureBasePath, picture.getPicturepath()).toString();
-        File file = new File(path);
+        File file = new File(picture.getPicturepath());
         byte[] read = Files.readAllBytes(file.toPath());
         String encodedContents = converter.encodeToString(read);
 
         MemberProfile memberProfile = (MemberProfile) daoService.getEntity(MemberProfile.class, memberId);
 
-
         MemberProfilePictureDTO dto = new MemberProfilePictureDTO();
-        dto.setFileName(picture.getPicturepath());
+        //dto.setFileName(picture.getPicturepath());
         dto.setFileContent(encodedContents);
         dto.setMemberProfileId(memberId);
         dto.setMemberName(memberProfile.getName());
 
         return ResponseEntity.ok(dto);
     }
-    
-    public ResponseEntity<?> getMemberBalances(Integer memberProfileId) throws Exception {
+
+    public ResponseEntity<?> getMemberBalances(int memberProfileId) throws Exception {
         //coop admin authentication logic starts here
         MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
 
@@ -1543,18 +1541,95 @@ public class RequestLogic {
         if (!daoService.checkObjectExists(MemberProfile.class, memberProfileId)) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The specified member does not exist. "
-                                    + "You cannot carry out this function"));
+                            + "You cannot carry out this function"));
         }
         MemberProfile memberProfile = (MemberProfile) daoService.getEntity(MemberProfile.class, memberProfileId);
-
 
         BigDecimal compulsoryBalance = memberService.getMemberWalletBalance(memberProfileId);
         BalanceDTO dto = new BalanceDTO();
         if (compulsoryBalance == null) {
-            compulsoryBalance = new BigDecimal(0);
+            compulsoryBalance = new BigDecimal(0.0);
         }
         dto.setWalletBalance(compulsoryBalance);
 
         return ResponseEntity.ok(dto);
+    }
+
+    public ResponseEntity<?> viewEsusuGroupCollectors(int esusuGroupId) throws Exception {
+        List<EsusuGroupMemberDto> list_out = new ArrayList<>();
+        try {
+            if (!daoService.checkObjectExists(EsusuGroup.class, esusuGroupId)) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified group id is invalid."));
+            }
+            EsusuGroup esusuGroup = (EsusuGroup) daoService.getEntity(EsusuGroup.class, esusuGroupId);
+            if (esusuGroup.getPositionArranged() != null && !esusuGroup.getPositionArranged()) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The group collection position has not been prepared."));
+            }
+            List<EsusuGroupMembers> members = memberService.viewEsusuGroupCollectors(esusuGroupId);
+
+            members.stream().forEach(member -> {
+                EsusuGroupMemberDto memberDto = modelMapping.esusuGroupMemberToDto(member);
+                List<EsusuRepaymentScheduleDto> schedules_dto = new ArrayList<>();
+                List<EsusuRepaymentSchedule> schedules_hib = new ArrayList<>();
+                try {
+                    schedules_hib = memberService.viewGroupMemberRepaymentSchedules(member.getId());
+                } catch (Exception ex) {
+                    java.util.logging.Logger.getLogger(RequestLogic.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                schedules_hib.stream().forEach(schedule -> {
+                    EsusuRepaymentScheduleDto schedule_dto = modelMapping.EsusuRepaymentScheduleToDto(schedule);
+                    schedules_dto.add(schedule_dto);
+                });
+                memberDto.setSchedules(schedules_dto);
+                list_out.add(memberDto);
+            });
+        } catch (Exception ex) {
+            logger.error("An error occured while preparing list. ", ex);
+        }
+        return ResponseEntity.ok(list_out);
+    }
+
+    public ResponseEntity<?> viewUserEsusuGroups(int memberProfileId) throws Exception {
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+        List<EsusuGroupMemberDto> list_out = new ArrayList<>();
+        try {
+            if (!daoService.checkObjectExists(MemberProfile.class, memberProfileId)) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified member id is invalid."));
+            }
+            if (initiator.getId() != memberProfileId) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("You are not authorised to see this information"));
+            }
+            //EsusuGroup esusuGroup = (EsusuGroup) daoService.getEntity(EsusuGroup.class, esusuGroupId);
+            List<EsusuGroupMembers> members = memberService.viewUserEsusuGroups(memberProfileId);
+
+            if (members.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("You are currently not in any group."));
+            }
+
+            members.stream().forEach(member -> {
+                EsusuGroupMemberDto memberDto = modelMapping.esusuGroupMemberToDto(member);
+                List<EsusuRepaymentScheduleDto> schedules_dto = new ArrayList<>();
+                List<EsusuRepaymentSchedule> schedules_hib = new ArrayList<>();
+                try {
+                    schedules_hib = memberService.viewGroupMemberRepaymentSchedules(member.getId());
+                } catch (Exception ex) {
+                    java.util.logging.Logger.getLogger(RequestLogic.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                schedules_hib.stream().forEach(schedule -> {
+                    EsusuRepaymentScheduleDto schedule_dto = modelMapping.EsusuRepaymentScheduleToDto(schedule);
+                    schedules_dto.add(schedule_dto);
+                });
+                memberDto.setSchedules(schedules_dto);
+                list_out.add(memberDto);
+            });
+        } catch (Exception ex) {
+            logger.error("An error occured while preparing list. ", ex);
+        }
+        return ResponseEntity.ok(list_out);
     }
 }

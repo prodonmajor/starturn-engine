@@ -6,6 +6,7 @@
 package com.starturn.engine.controller;
 
 import com.starturn.engine.controller.businesslogic.RequestLogic;
+import com.starturn.engine.models.BalanceDTO;
 import com.starturn.engine.models.ChangePasswordDTO;
 import com.starturn.engine.models.ContributionFrequencyDto;
 import com.starturn.engine.models.EsusuGroupDTO;
@@ -15,6 +16,7 @@ import com.starturn.engine.models.EsusuGroupMemberDto;
 import com.starturn.engine.models.EsusuGroupMembersWrapperDto;
 import com.starturn.engine.models.InterestDisbursementTypeDto;
 import com.starturn.engine.models.MemberProfileDTO;
+import com.starturn.engine.models.MemberProfilePictureDTO;
 import com.starturn.engine.models.response.ResponseInformation;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  *
@@ -314,7 +317,7 @@ public class RequestController {
     public ResponseEntity<?> viewEsusuGroupCollectionArrangement(@RequestParam(value = "esusuGroupId") int esusuGroupId) throws Exception {
         return logic.viewEsusuGroupCollectionArrangement(esusuGroupId);
     }
-    
+
     @GetMapping("/viewesusugroupmembers")
     @ApiOperation(value = "view esusu group members")
     @ApiResponses(value = {
@@ -324,18 +327,83 @@ public class RequestController {
         ,
         @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
     })
-    public ResponseEntity<?> viewEsusuGroupMembers(@RequestParam(value = "esusuGroupId") int esusuGroupId) throws Exception{
+    public ResponseEntity<?> viewEsusuGroupMembers(@RequestParam(value = "esusuGroupId") int esusuGroupId) throws Exception {
         return logic.viewEsusuGroupMembers(esusuGroupId);
     }
-    
+
     @GetMapping("/builddatabaseindex")
     @ApiOperation(value = "Extension Requirement")
     @ApiResponses(value = {
-        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class),
-        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class),
+        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class)
+        ,
         @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
     })
     public ResponseEntity<?> buildDatabaseIndex() throws Exception {
         return logic.buildDatabaseIndex();
+    }
+
+    @GetMapping("/viewesusugroupcollectors")
+    @ApiOperation(value = "view esusu group collectors")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = EsusuGroupMemberDto.class, responseContainer = "List")
+        ,
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> viewEsusuGroupCollectors(@RequestParam(value = "esusuGroupId") int esusuGroupId) throws Exception {
+        return logic.viewEsusuGroupCollectors(esusuGroupId);
+    }
+
+    @GetMapping("/viewuseresusugroups")
+    @ApiOperation(value = "view user esusu groups")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = EsusuGroupMemberDto.class, responseContainer = "List")
+        ,
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> viewUserEsusuGroups(@RequestParam(value = "memberProfileId") int memberProfileId) throws Exception {
+        return logic.viewUserEsusuGroups(memberProfileId);
+    }
+
+    @PostMapping("/uploadmemberprofilepicture")
+    @ApiOperation(value = "Upload member profile picture")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> uploadMemberProfilePicture(@RequestParam(value = "file", required = true) MultipartFile file, @RequestParam(value = "memberid", required = true) Integer memberId) throws Exception {
+        return logic.uploadMemberProfilePicture(file, memberId);
+    }
+
+    @GetMapping("/viewmemberprofilepicture")
+    @ApiOperation(value = "view member profile picture")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = MemberProfilePictureDTO.class)
+        ,
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> viewMemberProfilePicture(@RequestParam(value = "memberid", required = true) Integer memberId) throws Exception {
+        return logic.viewMemberProfilePicture(memberId);
+    }
+    
+    @GetMapping("/getmemberbalances")
+    @ApiOperation(value = "Get member wallet balance")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = BalanceDTO.class),
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class),
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> getMemberBalances(@RequestParam(value = "memberid", required = true) Integer memberProfileId) throws Exception {
+        return logic.getMemberBalances(memberProfileId);
     }
 }

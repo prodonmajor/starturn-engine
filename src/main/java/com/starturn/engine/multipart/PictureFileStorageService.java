@@ -30,12 +30,14 @@ import org.springframework.web.multipart.MultipartFile;
 public class PictureFileStorageService {
 
     private final Path fileStorageLocation;
+    String imagePath = "";
 
     public PictureFileStorageService(FileStorageProperties fileStorageProperties) {
         this.fileStorageLocation = Paths.get(fileStorageProperties.getProfilePicDir())
                 .toAbsolutePath().normalize();
         try {
             Files.createDirectories(this.fileStorageLocation);
+            imagePath = fileStorageProperties.getProfilePicDir();
         } catch (IOException ex) {
             throw new FileStorageException("Could not create the directory "
                     + "where the uploaded files will be stored", ex);
@@ -53,11 +55,12 @@ public class PictureFileStorageService {
         String ext = FilenameUtils.getExtension(fileName); // returns "txt"
         String name = String.format("%s.%s", RandomStringUtils.randomAlphanumeric(8), ext);
         //copy file to target location, replacing existing file with the same name
-        //Path targetLocation = this.fileStorageLocation.resolve(fileName);
-        //Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-        File dir = new File("/home/pregzt");
+        File dir = new File(imagePath);
         File newFile = new File(dir, name);
         newFileName = newFile.getCanonicalPath();
+        Path targetLocation = this.fileStorageLocation.resolve(newFileName);
+        Files.copy(file.getInputStream(), targetLocation);
+        System.out.println("image path is::::"+newFileName);
         return newFileName;
     }
 
