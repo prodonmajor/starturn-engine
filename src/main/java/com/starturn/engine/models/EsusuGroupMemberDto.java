@@ -50,4 +50,6 @@ public class EsusuGroupMemberDto {
     private BigDecimal interestAmountToPayback;
     private Integer numberOfPaybackSchedules;
     private List<EsusuRepaymentScheduleDto> schedules;
+    private EsusuGroupDTO esusuGroup;
+    private MemberProfilePictureDTO profilePicture;
 }

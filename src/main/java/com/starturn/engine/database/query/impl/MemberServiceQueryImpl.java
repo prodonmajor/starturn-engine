@@ -36,6 +36,7 @@ import org.hibernate.CacheMode;
 import org.hibernate.query.Query;
 import org.hibernate.search.FullTextSession;
 import org.hibernate.search.Search;
+import org.hibernate.search.query.dsl.QueryBuilder;
 
 /**
  *
@@ -756,5 +757,49 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
             dao.closeSession();
         }
         return groupmembers;
+    }
+
+    @Override
+    public List<MemberProfile> searchForMember(String memberSearchTerm, int pageNumber, int pageSize) throws Exception {
+                HibernateDataAccess dao = new HibernateDataAccess();
+        List<MemberProfile> members = new ArrayList<>();
+        try {
+            dao.startOperation();
+
+            FullTextSession fullTextSession = Search.getFullTextSession(dao.getSession());
+            QueryBuilder qb = fullTextSession.getSearchFactory()
+                    .buildQueryBuilder().forEntity(MemberProfile.class).get();
+
+//            org.apache.lucene.search.Query cooperativeQuery = qb
+//                    .keyword()
+//                    .onField("cooperative.id")
+//                    .matching(cooperativeId)
+//                    .createQuery();
+
+            org.apache.lucene.search.Query memberQuery = qb
+                    .keyword()
+                    .onFields("username", "name", "emailAddress","phoneNumber")
+                    .matching(memberSearchTerm + "*")
+                    .createQuery();
+
+//            org.apache.lucene.search.Query luceneQuery = qb.bool()
+//                    .must(cooperativeQuery)
+//                    .must(memberQuery)
+//                    .createQuery();
+
+            Query query = fullTextSession.createFullTextQuery(memberQuery, MemberProfile.class)
+                    .setFirstResult((pageNumber - 1) * pageSize)
+                    .setMaxResults(pageSize);
+            members = query.getResultList();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return members;
     }
 }

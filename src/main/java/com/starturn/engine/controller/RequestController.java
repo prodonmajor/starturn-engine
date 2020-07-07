@@ -406,4 +406,17 @@ public class RequestController {
     public ResponseEntity<?> getMemberBalances(@RequestParam(value = "memberid", required = true) Integer memberProfileId) throws Exception {
         return logic.getMemberBalances(memberProfileId);
     }
+    
+    @GetMapping("/searchformembers")
+    @ApiOperation(value = "View for members")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = MemberProfileDTO.class, responseContainer = "List"),
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class),
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> searchForMembers(@RequestParam(value = "searchterm", required = true) String searchTerm,
+            @RequestParam(value = "pagenumber", required = true, defaultValue = "1") Integer pageNumber,
+            @RequestParam(value = "pagesize", required = true, defaultValue = "10") Integer pageSize) throws Exception {
+        return logic.searchForMembers(searchTerm, pageNumber, pageSize);
+    }
 }

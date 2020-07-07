@@ -19,3 +19,4 @@ file:
     
 token:
     validity: 2
+    secret-key: Pa$$007##

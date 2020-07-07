@@ -39,4 +39,6 @@ public class EsusuGroupInvitesDto {
     private Date invitedDate;
     private String invitedByUsername;
     private Boolean treated;
+    MemberProfilePictureDTO profilePicture;
+    private String groupName;
 }

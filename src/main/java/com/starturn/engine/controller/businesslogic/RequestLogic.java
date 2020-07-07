@@ -427,7 +427,7 @@ public class RequestLogic {
 
             List<String> not_found = new ArrayList<>();
             Set<String> repeating_ids = new HashSet<>();
-            
+
             dto.getUsernames().add(group.getCreatedByUsername());
 
             for (String username : dto.getUsernames()) {
@@ -583,6 +583,7 @@ public class RequestLogic {
         }
         List<EsusuGroupInvitesDto> list_out = new ArrayList<>();
         for (EsusuGroupInvites inv : invites) {
+            EsusuGroup group = (EsusuGroup)daoService.getEntity(EsusuGroup.class, inv.getEsusuGroup().getId());
             MemberProfile member = (MemberProfile) daoService.getEntity(MemberProfile.class, inv.getMemberProfile().getId());
 
             EsusuGroupInvitesDto dto = new EsusuGroupInvitesDto();
@@ -592,6 +593,21 @@ public class RequestLogic {
             dto.setEsusuGroupId(inv.getEsusuGroup().getId());
             dto.setInvitedByUsername(inv.getInvitedByUsername());
             dto.setEmailAddress(member.getEmailAddress());
+            dto.setGroupName(group.getName());
+
+            if (memberService.checkMemberHasProfilePicture(member.getId())) {
+                MemberProfilePicture picture = memberService.getMemberProfilePicture(member.getId());
+                File file = new File(picture.getPicturepath());
+                byte[] read = Files.readAllBytes(file.toPath());
+                String encodedContents = converter.encodeToString(read);
+
+                MemberProfilePictureDTO dto_pic = new MemberProfilePictureDTO();
+                //dto.setFileName(picture.getPicturepath());
+                dto_pic.setFileContent(encodedContents);
+                dto_pic.setMemberProfileId(member.getId());
+                dto_pic.setMemberName(member.getName());
+                dto.setProfilePicture(dto_pic);
+            }
             list_out.add(dto);
         }
         return ResponseEntity.ok(list_out);
@@ -621,6 +637,20 @@ public class RequestLogic {
             dto.setEsusuGroupId(inv.getEsusuGroup().getId());
             dto.setInvitedByUsername(inv.getInvitedByUsername());
             dto.setEmailAddress(member.getEmailAddress());
+
+            if (memberService.checkMemberHasProfilePicture(member.getId())) {
+                MemberProfilePicture picture = memberService.getMemberProfilePicture(member.getId());
+                File file = new File(picture.getPicturepath());
+                byte[] read = Files.readAllBytes(file.toPath());
+                String encodedContents = converter.encodeToString(read);
+
+                MemberProfilePictureDTO dto_pic = new MemberProfilePictureDTO();
+                //dto.setFileName(picture.getPicturepath());
+                dto_pic.setFileContent(encodedContents);
+                dto_pic.setMemberProfileId(member.getId());
+                dto_pic.setMemberName(member.getName());
+                dto.setProfilePicture(dto_pic);
+            }
             list_out.add(dto);
         }
         return ResponseEntity.ok(list_out);
@@ -1427,8 +1457,25 @@ public class RequestLogic {
             }
 
             members.stream().forEach(member -> {
-                EsusuGroupMemberDto memberDto = modelMapping.esusuGroupMemberToDto(member);
-                list_out.add(memberDto);
+                try {
+                    EsusuGroupMemberDto memberDto = modelMapping.esusuGroupMemberToDto(member);
+                    if (memberService.checkMemberHasProfilePicture(member.getId())) {
+                        MemberProfilePicture picture = memberService.getMemberProfilePicture(member.getId());
+                        File file = new File(picture.getPicturepath());
+                        byte[] read = Files.readAllBytes(file.toPath());
+                        String encodedContents = converter.encodeToString(read);
+
+                        MemberProfilePictureDTO dto_pic = new MemberProfilePictureDTO();
+                        //dto.setFileName(picture.getPicturepath());
+                        dto_pic.setFileContent(encodedContents);
+                        dto_pic.setMemberProfileId(member.getId());
+                        dto_pic.setMemberName(memberDto.getMemberName());
+                        memberDto.setProfilePicture(dto_pic);
+                    }
+                    list_out.add(memberDto);
+                } catch (Exception ex) {
+                    java.util.logging.Logger.getLogger(RequestLogic.class.getName()).log(Level.SEVERE, null, ex);
+                }
             });
         } catch (Exception ex) {
             logger.error("An error occured while preparing list. ", ex);
@@ -1487,7 +1534,7 @@ public class RequestLogic {
             picture = new MemberProfilePicture();
 
             String fileName = pictureFileStorageService.storeFile(file);
-            logger.info("file path {} ",fileName);
+            logger.info("file path {} ", fileName);
             picture.setMemberProfile(memberProfile);
             picture.setPicturepath(fileName);
         }
@@ -1504,7 +1551,7 @@ public class RequestLogic {
     }
 
     public ResponseEntity<?> viewMemberProfilePicture(Integer memberId) throws Exception {
-        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+        //MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
 
         if (!daoService.checkObjectExists(MemberProfile.class, memberId)) {
             return ResponseEntity.badRequest()
@@ -1574,6 +1621,19 @@ public class RequestLogic {
                 List<EsusuRepaymentScheduleDto> schedules_dto = new ArrayList<>();
                 List<EsusuRepaymentSchedule> schedules_hib = new ArrayList<>();
                 try {
+                    if (memberService.checkMemberHasProfilePicture(member.getId())) {
+                        MemberProfilePicture picture = memberService.getMemberProfilePicture(member.getId());
+                        File file = new File(picture.getPicturepath());
+                        byte[] read = Files.readAllBytes(file.toPath());
+                        String encodedContents = converter.encodeToString(read);
+
+                        MemberProfilePictureDTO dto_pic = new MemberProfilePictureDTO();
+                        //dto.setFileName(picture.getPicturepath());
+                        dto_pic.setFileContent(encodedContents);
+                        dto_pic.setMemberProfileId(member.getId());
+                        dto_pic.setMemberName(memberDto.getMemberName());
+                        memberDto.setProfilePicture(dto_pic);
+                    }
                     schedules_hib = memberService.viewGroupMemberRepaymentSchedules(member.getId());
                 } catch (Exception ex) {
                     java.util.logging.Logger.getLogger(RequestLogic.class.getName()).log(Level.SEVERE, null, ex);
@@ -1594,6 +1654,7 @@ public class RequestLogic {
     public ResponseEntity<?> viewUserEsusuGroups(int memberProfileId) throws Exception {
         MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
         List<EsusuGroupMemberDto> list_out = new ArrayList<>();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyy-MM-dd");
         try {
             if (!daoService.checkObjectExists(MemberProfile.class, memberProfileId)) {
                 return ResponseEntity.badRequest()
@@ -1613,6 +1674,27 @@ public class RequestLogic {
 
             members.stream().forEach(member -> {
                 EsusuGroupMemberDto memberDto = modelMapping.esusuGroupMemberToDto(member);
+                try {
+                    EsusuGroup group_hib = (EsusuGroup) daoService.getEntity(EsusuGroup.class, member.getEsusuGroup().getId());
+
+                    EsusuGroupDTO dto_esu = new EsusuGroupDTO();
+
+                    dto_esu.setId(group_hib.getId());
+                    dto_esu.setContributionAmount(group_hib.getContributionAmount());
+                    dto_esu.setContributionFrequencyId(group_hib.getContributionFrequency().getId());
+                    dto_esu.setCircleEnded(group_hib.getCircleCompleted());
+                    dto_esu.setCreatedByUsername(group_hib.getCreatedByUsername());
+                    dto_esu.setCreationDate(formatter.format(group_hib.getCreationDate()));
+                    dto_esu.setDescription(group_hib.getDescription());
+                    dto_esu.setEndDate(formatter.format(group_hib.getEndDate()));
+                    dto_esu.setInterest_disbursement_type_id(group_hib.getInterestDisbursementType().getId());
+                    dto_esu.setName(group_hib.getName());
+                    dto_esu.setNumberOfContributors(group_hib.getNumberOfContributors());
+                    dto_esu.setStartDate(formatter.format(group_hib.getStartDate()));
+                    memberDto.setEsusuGroup(dto_esu);
+                } catch (Exception ex) {
+                    java.util.logging.Logger.getLogger(RequestLogic.class.getName()).log(Level.SEVERE, null, ex);
+                }
                 List<EsusuRepaymentScheduleDto> schedules_dto = new ArrayList<>();
                 List<EsusuRepaymentSchedule> schedules_hib = new ArrayList<>();
                 try {
@@ -1631,5 +1713,17 @@ public class RequestLogic {
             logger.error("An error occured while preparing list. ", ex);
         }
         return ResponseEntity.ok(list_out);
+    }
+    
+    public ResponseEntity<?> searchForMembers(String searchTerm, Integer pageNumber, Integer pageSize) throws Exception {
+
+        List<MemberProfileDTO> memberDTOs = new ArrayList<>();
+        List<MemberProfile> members = memberService.searchForMember(searchTerm, pageNumber, pageSize);
+        for (MemberProfile member : members) {
+            MemberProfileDTO memberDTO = modelMapping.memberToDtoMapping(member);
+            memberDTOs.add(memberDTO);
+        }
+
+        return ResponseEntity.ok(memberDTOs);
     }
 }

@@ -100,4 +100,5 @@ public interface MemberServiceQuery {
 
     public MemberProfilePicture getMemberProfilePicture(int memberProfileId) throws Exception;
     public BigDecimal getMemberWalletBalance(int memberProfileId) throws Exception;
+    public List<MemberProfile> searchForMember(String memberSearchTerm, int pageNumber, int pageSize) throws Exception;
 }
