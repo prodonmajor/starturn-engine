@@ -40,11 +40,12 @@ public class Transaction  implements java.io.Serializable {
      private Boolean isCardPayment;
      private Boolean isTargetSavings;
      private Date transactionDate;
+     private String transactionReference;
 
     public Transaction() {
     }
 
-    public Transaction(EsusuGroup esusuGroup, MemberProfile memberProfile, TargetSavings targetSavings, TransactionType transactionType, BigDecimal amount, BigDecimal amountInAndOut, Boolean isEsusuContribution, Boolean isAutoDebit, Boolean isCardPayment, Boolean isTargetSavings, Date transactionDate) {
+    public Transaction(EsusuGroup esusuGroup, MemberProfile memberProfile, TargetSavings targetSavings, TransactionType transactionType, BigDecimal amount, BigDecimal amountInAndOut, Boolean isEsusuContribution, Boolean isAutoDebit, Boolean isCardPayment, Boolean isTargetSavings, Date transactionDate,String transactionReference) {
        this.esusuGroup = esusuGroup;
        this.memberProfile = memberProfile;
        this.targetSavings = targetSavings;
@@ -56,6 +57,7 @@ public class Transaction  implements java.io.Serializable {
        this.isCardPayment = isCardPayment;
        this.isTargetSavings = isTargetSavings;
        this.transactionDate = transactionDate;
+       this.transactionReference = transactionReference;
     }
    
      @Id @GeneratedValue(strategy=IDENTITY)
@@ -190,9 +192,14 @@ public class Transaction  implements java.io.Serializable {
         this.transactionDate = transactionDate;
     }
 
+    @Column(name="transaction_reference", length=500)
+    public String getTransactionReference() {
+        return transactionReference;
+    }
 
-
-
+    public void setTransactionReference(String transactionReference) {
+        this.transactionReference = transactionReference;
+    }
 }
 
 

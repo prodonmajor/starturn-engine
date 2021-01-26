@@ -32,8 +32,10 @@ public class TextAlert {
     
     public void sendSingleText(MessageDetails msg) {
         //to implement
-        String username = "emmanuel.idoko";
-        String password = "Password@1";
+//        String username = "emmanuel.idoko";
+//        String password = "Password@1";
+        String username = "osolaolayinka";
+        String password = "Ayobami11.";
         try {
             Authentication auth = new Authentication();
             auth.setUsername(username);

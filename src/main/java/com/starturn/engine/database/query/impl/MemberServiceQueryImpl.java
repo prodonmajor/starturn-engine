@@ -14,6 +14,8 @@ import com.starturn.engine.database.entities.MemberProfile;
 import com.starturn.engine.database.entities.MemberProfilePicture;
 import com.starturn.engine.database.entities.MemberWallet;
 import com.starturn.engine.database.entities.MemberWalletTransaction;
+import com.starturn.engine.database.entities.Transaction;
+import com.starturn.engine.database.entities.TransactionType;
 import com.starturn.engine.database.entities.UserToken;
 import com.starturn.engine.database.query.MemberServiceQuery;
 import com.starturn.engine.database.util.CustomIndexerProgressMonitor;
@@ -29,7 +31,9 @@ import javax.persistence.Tuple;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Join;
+import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
+import javax.persistence.criteria.Subquery;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.CacheMode;
@@ -533,7 +537,7 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
     @Override
     public List<EsusuGroup> retrieveAllGroups() throws Exception {
         HibernateDataAccess dao = new HibernateDataAccess();
-        List<EsusuGroup> invites = new ArrayList<>(); 
+        List<EsusuGroup> invites = new ArrayList<>();
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         try {
             dao.startOperation();
@@ -568,10 +572,10 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
                 group.setName((String) t.get(1));
                 group.setDescription((String) t.get(2));
                 group.setContributionAmount((BigDecimal) t.get(3));
-                group.setNumberOfContributors((Integer)t.get(4));
-                group.setStartDate((Date)t.get(5));
-                group.setEndDate((Date)t.get(6));
-                group.setCreatedByUsername((String)t.get(7));
+                group.setNumberOfContributors((Integer) t.get(4));
+                group.setStartDate((Date) t.get(5));
+                group.setEndDate((Date) t.get(6));
+                group.setCreatedByUsername((String) t.get(7));
                 group.setCircleCompleted((Boolean) t.get(8));
                 group.setIsWithInterest((Boolean) t.get(9));
                 group.setPositionArranged((Boolean) t.get(10));
@@ -590,7 +594,7 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
         }
         return invites;
     }
-    
+
     @Override
     public boolean buildDatabaseIndex() throws Exception {
         HibernateDataAccess dao = new HibernateDataAccess();
@@ -620,7 +624,7 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
         }
         return done;
     }
-    
+
     @Override
     public boolean checkMemberHasProfilePicture(int memberProfileId) throws Exception {
         HibernateDataAccess dao = new HibernateDataAccess();
@@ -674,7 +678,7 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
         }
         return member;
     }
-    
+
     @Override
     public BigDecimal getMemberWalletBalance(int memberProfileId) throws Exception {
         HibernateDataAccess dao = new HibernateDataAccess();
@@ -761,7 +765,7 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
 
     @Override
     public List<MemberProfile> searchForMember(String memberSearchTerm, int pageNumber, int pageSize) throws Exception {
-                HibernateDataAccess dao = new HibernateDataAccess();
+        HibernateDataAccess dao = new HibernateDataAccess();
         List<MemberProfile> members = new ArrayList<>();
         try {
             dao.startOperation();
@@ -775,10 +779,9 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
 //                    .onField("cooperative.id")
 //                    .matching(cooperativeId)
 //                    .createQuery();
-
             org.apache.lucene.search.Query memberQuery = qb
                     .keyword()
-                    .onFields("username", "name", "emailAddress","phoneNumber")
+                    .onFields("username", "name", "emailAddress", "phoneNumber")
                     .matching(memberSearchTerm + "*")
                     .createQuery();
 
@@ -786,7 +789,6 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
 //                    .must(cooperativeQuery)
 //                    .must(memberQuery)
 //                    .createQuery();
-
             Query query = fullTextSession.createFullTextQuery(memberQuery, MemberProfile.class)
                     .setFirstResult((pageNumber - 1) * pageSize)
                     .setMaxResults(pageSize);
@@ -801,5 +803,154 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
             dao.closeSession();
         }
         return members;
+    }
+
+    @Override
+    public boolean captureMemberMonthlyContributionCardPayment(Transaction trans, MemberWallet wallet) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        boolean saved = false;
+        try {
+            dao.startOperation();
+
+            dao.createUpdateObject(trans);
+            dao.createUpdateObject(wallet);
+
+            dao.commit();
+            saved = true;
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return saved;
+    }
+
+    @Override
+    public List<Transaction> viewUserTransactions(int memberProfileId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        List<Transaction> invites = new ArrayList<>();
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<Transaction> cr = cb.createQuery(Transaction.class);
+
+            Root<Transaction> root = cr.from(Transaction.class);
+
+            cr.select(root).where(cb.equal(root.get("memberProfile"), memberProfileId));
+
+            Query<Transaction> query = dao.getSession().createQuery(cr);
+            invites = query.getResultList();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return invites;
+    }
+
+    @Override
+    public boolean debitGroupMemberWallet(int walletId, BigDecimal amount) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        boolean applied = false;
+        try {
+            dao.startOperation();
+            MemberWallet wallet = (MemberWallet) dao.searchObject(MemberWallet.class, walletId);
+            BigDecimal prevBal = wallet.getBalance();
+            if (prevBal.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new Exception("You cannot debit a wallet with zero balance.");
+            }
+            if (prevBal.compareTo(amount) < 0) {
+                throw new Exception("Current balance cannot be less than amount to be debited.");
+            }
+            BigDecimal newBal = prevBal.subtract(amount);
+            wallet.setBalance(newBal);
+            dao.createUpdateObject(wallet);
+            dao.commit();
+            applied = true;
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return applied;
+    }
+
+    @Override
+    public boolean checkMemberHasWallet(int memberProfileId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        Long count = 0l;
+        try {
+            dao.startOperation();
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<Long> cr = cb.createQuery(Long.class);
+
+            Root<MemberWallet> root = cr.from(MemberWallet.class);
+            Join<MemberWallet, MemberProfile> member_join = root.join("memberProfile");
+            cr.select(cb.count(root)).where(cb.equal(member_join.get("id"), memberProfileId));
+
+            Query<Long> query = dao.getSession().createQuery(cr);
+            count = query.getSingleResult();
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return count > 0;
+    }
+
+    @Override
+    public Transaction getMemberLastTransaction(int memberProfileId) throws Exception {
+        HibernateDataAccess dao = new HibernateDataAccess();
+        Transaction transaction = new Transaction();
+        try {
+            dao.startOperation();
+            //TransactionType type = (TransactionType) dao.searchObject(TransactionType.class, 1);
+
+            CriteriaBuilder cb = dao.getSession().getCriteriaBuilder();
+            CriteriaQuery<Transaction> cr = cb.createQuery(Transaction.class);
+
+            Root<Transaction> root = cr.from(Transaction.class);
+
+            Subquery<java.util.Date> sub = cr.subquery(java.util.Date.class);
+            Root<Transaction> sub_root = sub.from(Transaction.class);
+            Join<Transaction, MemberProfile> member_join = sub_root.join("memberProfile");
+            //Join<Transaction, TransactionType> type_join = sub_root.join("transactionType");
+
+            sub.select(cb.greatest(sub_root.<java.util.Date>get("transactionDate"))).where(
+                    //cb.equal(type_join.get("id"), type.getId()),
+                    cb.equal(member_join.get("id"), memberProfileId)
+            );
+
+            Predicate p = cb.equal(root.get("transactionDate"), sub);
+            cr.where(p);
+
+            Query<Transaction> query = dao.getSession().createQuery(cr);
+            List<Transaction> transactionList = query.getResultList();
+
+            if (!transactionList.isEmpty()) {
+                transaction = transactionList.get(0);
+            }
+
+            dao.commit();
+        } catch (Exception ex) {
+            dao.rollback();
+            logger.error("error thrown - ", ex);
+            throw new Exception(ex);
+        } finally {
+            dao.closeSession();
+        }
+        return transaction;
     }
 }

@@ -12,6 +12,7 @@ import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
 import com.starturn.engine.database.entities.MemberProfile;
 import com.starturn.engine.database.entities.MemberProfilePicture;
 import com.starturn.engine.database.entities.MemberWallet;
+import com.starturn.engine.database.entities.Transaction;
 import com.starturn.engine.database.entities.UserToken;
 import java.math.BigDecimal;
 import java.util.List;
@@ -101,4 +102,9 @@ public interface MemberServiceQuery {
     public MemberProfilePicture getMemberProfilePicture(int memberProfileId) throws Exception;
     public BigDecimal getMemberWalletBalance(int memberProfileId) throws Exception;
     public List<MemberProfile> searchForMember(String memberSearchTerm, int pageNumber, int pageSize) throws Exception;
+    public boolean captureMemberMonthlyContributionCardPayment(Transaction trans, MemberWallet wallet) throws Exception;
+    public List<Transaction> viewUserTransactions(int memberProfileId) throws Exception;
+    public boolean debitGroupMemberWallet(int walletId, BigDecimal amount) throws Exception;
+    public boolean checkMemberHasWallet(int memberProfileId) throws Exception;
+    public Transaction getMemberLastTransaction(int memberProfileId) throws Exception;
 }

@@ -15,8 +15,10 @@ import com.starturn.engine.models.EsusuGroupInvitesDto;
 import com.starturn.engine.models.EsusuGroupMemberDto;
 import com.starturn.engine.models.EsusuGroupMembersWrapperDto;
 import com.starturn.engine.models.InterestDisbursementTypeDto;
+import com.starturn.engine.models.MemberContributionCardPaymentDTO;
 import com.starturn.engine.models.MemberProfileDTO;
 import com.starturn.engine.models.MemberProfilePictureDTO;
+import com.starturn.engine.models.TransactionDTO;
 import com.starturn.engine.models.response.ResponseInformation;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -59,7 +61,7 @@ public class RequestController {
         return logic.changePassword(passwordInfo, result);
     }
 
-    @PostMapping("/creategroup")
+     @PostMapping("/creategroup")
     @ApiOperation(value = "create a new esusu group")
     @ApiResponses(value = {
         @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class)
@@ -418,5 +420,29 @@ public class RequestController {
             @RequestParam(value = "pagenumber", required = true, defaultValue = "1") Integer pageNumber,
             @RequestParam(value = "pagesize", required = true, defaultValue = "10") Integer pageSize) throws Exception {
         return logic.searchForMembers(searchTerm, pageNumber, pageSize);
+    }
+    
+    @GetMapping("/viewusertransactionhistory")
+    @ApiOperation(value = "View user transactions history")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = TransactionDTO.class, responseContainer = "List"),
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class),
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> viewUserTransactionHistory(@RequestParam(value = "memberid", required = true) int memberProfileId, @RequestParam(value = "groupid", required = true) int groupId) throws Exception{
+    return logic.viewUserTransactionHistory(memberProfileId, groupId);
+    }
+    
+    @PostMapping("/capturemembercontributionviacard")
+    @ApiOperation(value = "Capture Member Contribution Using Card Payment")
+    @ApiResponses(value = {
+        @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 400, message = "incorrect information provided", response = ResponseInformation.class)
+        ,
+        @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
+    })
+    public ResponseEntity<?> captureMemberContributionCardPayment(@Valid @RequestBody MemberContributionCardPaymentDTO request, BindingResult result) throws Exception{
+    return logic.captureMemberContributionCardPayment(request, result);
     }
 }

@@ -18,6 +18,8 @@ import com.starturn.engine.database.entities.EsusuRepaymentSchedule;
 import com.starturn.engine.database.entities.InterestDisbursementType;
 import com.starturn.engine.database.entities.MemberProfilePicture;
 import com.starturn.engine.database.entities.MemberWallet;
+import com.starturn.engine.database.entities.Transaction;
+import com.starturn.engine.database.entities.TransactionType;
 import com.starturn.engine.facade.IAuthenticationFacade;
 import com.starturn.engine.models.ArrangeGroupMemberCollectionPositionDto;
 import com.starturn.engine.models.ArrangeGroupMemberCollectionPositionWrapperDto;
@@ -31,9 +33,11 @@ import com.starturn.engine.models.EsusuGroupMemberDto;
 import com.starturn.engine.models.EsusuGroupMembersWrapperDto;
 import com.starturn.engine.models.EsusuRepaymentScheduleDto;
 import com.starturn.engine.models.InterestDisbursementTypeDto;
+import com.starturn.engine.models.MemberContributionCardPaymentDTO;
 import com.starturn.engine.models.MemberProfileDTO;
 import com.starturn.engine.models.MemberProfilePictureDTO;
 import com.starturn.engine.models.MemberWalletDto;
+import com.starturn.engine.models.TransactionDTO;
 import com.starturn.engine.models.response.ErrorMessage;
 import com.starturn.engine.models.response.ResponseInformation;
 import com.starturn.engine.multipart.PictureFileStorageService;
@@ -119,6 +123,18 @@ public class RequestLogic {
                     .map(p -> p.getDefaultMessage()).collect(Collectors.joining("\n"));
             return ResponseEntity.badRequest().body(new ResponseInformation("An error occured while trying to persist information: " + errors));
         }
+        if (dto.getName().trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Name is required."));
+        }
+        if (dto.getPhoneNumber().trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Phone number is required."));
+        }
+        if (dto.getEmailAddress().trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The email address is required."));
+        }
 
         if (memberService.checkUserExists(dto.getEmailAddress())) {
             return ResponseEntity.badRequest()
@@ -157,7 +173,7 @@ public class RequestLogic {
 
         if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().trim().isEmpty()) {
             MessageDetails msgDetails = new MessageDetails();
-            msgDetails.setFrom("Eazcoopdemo");
+            msgDetails.setFrom("Starturn");
             msgDetails.setTo(dto.getPhoneNumber());
             msgDetails.setText(message);
 
@@ -583,7 +599,7 @@ public class RequestLogic {
         }
         List<EsusuGroupInvitesDto> list_out = new ArrayList<>();
         for (EsusuGroupInvites inv : invites) {
-            EsusuGroup group = (EsusuGroup)daoService.getEntity(EsusuGroup.class, inv.getEsusuGroup().getId());
+            EsusuGroup group = (EsusuGroup) daoService.getEntity(EsusuGroup.class, inv.getEsusuGroup().getId());
             MemberProfile member = (MemberProfile) daoService.getEntity(MemberProfile.class, inv.getMemberProfile().getId());
 
             EsusuGroupInvitesDto dto = new EsusuGroupInvitesDto();
@@ -594,6 +610,7 @@ public class RequestLogic {
             dto.setInvitedByUsername(inv.getInvitedByUsername());
             dto.setEmailAddress(member.getEmailAddress());
             dto.setGroupName(group.getName());
+            dto.setTreated(inv.getTreated());
 
             if (memberService.checkMemberHasProfilePicture(member.getId())) {
                 MemberProfilePicture picture = memberService.getMemberProfilePicture(member.getId());
@@ -621,6 +638,8 @@ public class RequestLogic {
         }
 
         List<EsusuGroupInvites> invites = memberService.viewGroupInvitations(groupId);
+        EsusuGroup group = (EsusuGroup) daoService.getEntity(EsusuGroup.class, groupId);
+
         if (invites.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("There are no invitations for this group."));
@@ -637,6 +656,9 @@ public class RequestLogic {
             dto.setEsusuGroupId(inv.getEsusuGroup().getId());
             dto.setInvitedByUsername(inv.getInvitedByUsername());
             dto.setEmailAddress(member.getEmailAddress());
+            dto.setPhoneNumber(member.getPhoneNumber());
+            dto.setGroupName(group.getName());
+            dto.setMemberProfileId(member.getId());
 
             if (memberService.checkMemberHasProfilePicture(member.getId())) {
                 MemberProfilePicture picture = memberService.getMemberProfilePicture(member.getId());
@@ -1002,235 +1024,251 @@ public class RequestLogic {
         return ResponseEntity.ok(new ResponseInformation("Successful"));
     }
 
+    /**
+     *
+     * @param dto contains the list of thrift members whose collection date is
+     * to be computed
+     * @param result contains errors returned by the model validation api's
+     * @return list of the thrift members with their collection dates if preview
+     * flag is set to true else returns a success message
+     * @throws Exception
+     */
     public ResponseEntity<?> arrangeEsusGroupCollection(EsusuGroupMembersWrapperDto dto, BindingResult result) throws Exception {
-        if (result.hasFieldErrors()) {
-            String errors = result.getFieldErrors().stream()
-                    .map(p -> p.getDefaultMessage()).collect(Collectors.joining("\n"));
-            return ResponseEntity.badRequest().body(new ResponseInformation("An error occured while trying to persist information: " + errors));
-        }
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+        try {
+            if (result.hasFieldErrors()) {
+                String errors = result.getFieldErrors().stream()
+                        .map(p -> p.getDefaultMessage()).collect(Collectors.joining("\n"));
+                return ResponseEntity.badRequest().body(new ResponseInformation("An error occured while trying to persist information: " + errors));
+            }
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+            MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
 
-        if (dto.getGroupMembers() == null || dto.getGroupMembers().size() < 1) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The esusu group members list cannot be empty, "
-                            + "Please contact Administrator"));
-        }
-        if (!daoService.checkObjectExists(EsusuGroup.class, dto.getGroupMembers().get(0).getEsusuGroupId())) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The specified group id is invalid."));
-        }
-        EsusuGroup group = (EsusuGroup) daoService.getEntity(EsusuGroup.class, dto.getGroupMembers().get(0).getEsusuGroupId());
-        if (group.getPositionArranged() != null && group.getPositionArranged()) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("This action has been performed already."));
-        }
-        int level = 1;
-        //Date startDate = formatter.parse(dto.getCollectionDate());
-        Date startDate = group.getStartDate();
+            if (dto.getGroupMembers() == null || dto.getGroupMembers().size() < 1) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The esusu group members list cannot be empty, "
+                                + "Please contact Administrator"));
+            }
+            if (!daoService.checkObjectExists(EsusuGroup.class, dto.getGroupMembers().get(0).getEsusuGroupId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified group id is invalid."));
+            }
+            EsusuGroup group = (EsusuGroup) daoService.getEntity(EsusuGroup.class, dto.getGroupMembers().get(0).getEsusuGroupId());
+            if (group.getPositionArranged() != null && group.getPositionArranged()) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("This action has been performed already."));
+            }
+            int level = 1;
+            //Date startDate = formatter.parse(dto.getCollectionDate());
+            Date startDate = group.getStartDate();
 
-        ContributionFrequency contributionFrequency = (ContributionFrequency) daoService.getEntity(ContributionFrequency.class, group.getContributionFrequency().getId());
+            ContributionFrequency contributionFrequency = (ContributionFrequency) daoService.getEntity(ContributionFrequency.class, group.getContributionFrequency().getId());
 
-        if (!initiator.getUsername().equalsIgnoreCase(group.getCreatedByUsername())) {
-            return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("Only the creator of this group is allowed to perform this function."));
-        }
-
-        String freqName = contributionFrequency.getName();
-        int frequencyId = dateUtility.getJavaDateCalendarFieldId(freqName);
-        Set<Integer> repeating_ids = new HashSet<>();
-        int totalMembers = dto.getGroupMembers().size();
-        Map<EsusuGroupMembers, List<EsusuRepaymentSchedule>> records_to_create = new HashMap<>();
-        if (group.getIsWithInterest()) {//esusu with interest
-            BigDecimal monthlyInterestAmountToPayback;
-            int interestRate_group = 5;
-            int interestRate_operator = 50;
-
-            List<EsusuRepaymentSchedule> all_schedules;
-            Date newStartDate = startDate;
-            for (EsusuGroupMemberDto egm : dto.getGroupMembers()) {
-                Date collectionDate = dateUtility.addToDate(newStartDate, 1, frequencyId);
-
-                if (!repeating_ids.add(egm.getMemberProfileId())) {
-                    return ResponseEntity.badRequest()
-                            .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], is repeating, please remove duplicates."));
-                }
-
-                if (!daoService.checkObjectExists(EsusuGroupMembers.class, egm.getId())) {
-                    return ResponseEntity.badRequest()
-                            .body(new ResponseInformation("The specified esusu group member id [" + egm.getId() + "], does not exist."));
-                }
-
-                if (!daoService.checkObjectExists(MemberProfile.class, egm.getMemberProfileId())) {
-                    return ResponseEntity.badRequest()
-                            .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], does not exist."));
-                }
-
-                if (egm.getCollectionPosition() == null || egm.getCollectionPosition() != level) {
-                    return ResponseEntity.badRequest()
-                            .body(new ResponseInformation("A collection position contains an illegal position number. "
-                                    + "It should be " + level + ", whereas it is " + egm.getCollectionPosition()));
-                }
-                monthlyInterestAmountToPayback = (group.getContributionAmount().multiply(BigDecimal.valueOf(interestRate_group))).divide(BigDecimal.valueOf(100), RoundingMode.HALF_EVEN);
-
-                BigDecimal interest_available = ((BigDecimal.valueOf(level).subtract(BigDecimal.ONE)).multiply(BigDecimal.valueOf(interestRate_group)).multiply(group.getContributionAmount())).divide(BigDecimal.valueOf(100), RoundingMode.HALF_EVEN);
-                BigDecimal operator_fee = ((interest_available).multiply(BigDecimal.valueOf(interestRate_operator))).divide(BigDecimal.valueOf(100), RoundingMode.HALF_EVEN);
-                BigDecimal interest_to_receive = interest_available.subtract(operator_fee);
-                logger.info("level {}, available interest {}, operator fee {}, interest to receive {} ",
-                        level, interest_available, operator_fee, interest_to_receive);
-
-                EsusuGroupMembers group_member = (EsusuGroupMembers) daoService.getEntity(EsusuGroupMembers.class, egm.getId());
-                group_member.setCollectionPosition(String.valueOf(egm.getCollectionPosition()));
-                group_member.setExpectedAmount(BigDecimal.valueOf(totalMembers).multiply(group.getMonthlyCollectionAmount()));
-                group_member.setAmountPaid(BigDecimal.ZERO);
-                group_member.setPaid(Boolean.FALSE);
-                group_member.setExpectedCollectionDate(collectionDate);
-                group_member.setExpectedAmount(group.getContributionAmount().multiply(BigDecimal.valueOf(totalMembers)));
-                group_member.setInterestAmountToReceive(interest_to_receive);
-                group_member.setInterestPaid(Boolean.FALSE);
-                group_member.setTotalAmountToReceive(group_member.getExpectedAmount().add(interest_to_receive));
-                group_member.setMonthlyInterestAmountPayback(monthlyInterestAmountToPayback);
-                int number_of_schedules = totalMembers - level;
-                group_member.setNumberOfPaybackSchedules(number_of_schedules);
-                group_member.setInterestAmountToPayback(monthlyInterestAmountToPayback.multiply(BigDecimal.valueOf(number_of_schedules)));
-                Date schedule_start_date = collectionDate;
-                all_schedules = new ArrayList<>();
-
-                if (number_of_schedules > 0) {
-                    for (int i = 0; i < number_of_schedules; i++) {
-
-                        EsusuRepaymentSchedule schedule = new EsusuRepaymentSchedule();
-                        Date payableDate = dateUtility.addToDate(schedule_start_date, 1, frequencyId);
-
-                        schedule.setEsusuGroup(group);
-                        schedule.setEsusuGroupMembers(group_member);
-                        schedule.setInterestAmount(monthlyInterestAmountToPayback);
-                        schedule.setMemberProfile((MemberProfile) daoService.getEntity(MemberProfile.class, egm.getMemberProfileId()));
-                        schedule.setPaid(Boolean.FALSE);
-                        schedule.setPrincipalAmount(group.getContributionAmount());
-                        schedule.setRepaymentDate(payableDate);
-                        schedule.setTotalAmount(schedule.getPrincipalAmount().add(schedule.getInterestAmount()));
-                        all_schedules.add(schedule);
-                        schedule_start_date = payableDate;
-                    }
-                    records_to_create.put(group_member, all_schedules);
-                    //logger.info("level {},memberId {}, collection position {}", level, group_member.getMemberProfile().getId(), group_member.getCollectionPosition());
-                } else {
-                    records_to_create.put(group_member, null);
-                }
-
-                level++;
-                newStartDate = collectionDate;
+            if (!initiator.getUsername().equalsIgnoreCase(group.getCreatedByUsername())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("Only the creator of this group is allowed to perform this function."));
             }
 
-        } else {//not with interest
-            List<EsusuRepaymentSchedule> all_schedules;
+            String freqName = contributionFrequency.getName();
+            int frequencyId = dateUtility.getJavaDateCalendarFieldId(freqName);
+            Set<Integer> repeating_ids = new HashSet<>();
+            int totalMembers = dto.getGroupMembers().size();
+            Map<EsusuGroupMembers, List<EsusuRepaymentSchedule>> records_to_create = new HashMap<>();
+            if (group.getIsWithInterest()) {//esusu with interest
+                BigDecimal monthlyInterestAmountToPayback;
+                int interestRate_group = 5;
+                int interestRate_operator = 50;
 
-            Date newStartDate = startDate;
-            for (EsusuGroupMemberDto egm : dto.getGroupMembers()) {
-                Date collectionDate = dateUtility.addToDate(newStartDate, 1, frequencyId);
+                List<EsusuRepaymentSchedule> all_schedules;
+                Date newStartDate = startDate;
+                for (EsusuGroupMemberDto egm : dto.getGroupMembers()) {
+                    Date collectionDate = dateUtility.addToDate(newStartDate, 1, frequencyId);
 
-                if (!repeating_ids.add(egm.getMemberProfileId())) {
-                    return ResponseEntity.badRequest()
-                            .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], is repeating, please remove duplicates."));
-                }
-
-                if (!daoService.checkObjectExists(EsusuGroupMembers.class, egm.getId())) {
-                    return ResponseEntity.badRequest()
-                            .body(new ResponseInformation("The specified esusu group member id [" + egm.getId() + "], does not exist."));
-                }
-
-                if (!daoService.checkObjectExists(MemberProfile.class, egm.getMemberProfileId())) {
-                    return ResponseEntity.badRequest()
-                            .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], does not exist."));
-                }
-
-                if (egm.getCollectionPosition() == null || egm.getCollectionPosition() != level) {
-                    return ResponseEntity.badRequest()
-                            .body(new ResponseInformation("A collection position contains an illegal position number. "
-                                    + "It should be " + level + ", whereas it is " + egm.getCollectionPosition()));
-                }
-
-                EsusuGroupMembers group_member = (EsusuGroupMembers) daoService.getEntity(EsusuGroupMembers.class, egm.getId());
-                group_member.setCollectionPosition(String.valueOf(egm.getCollectionPosition()));
-                group_member.setExpectedAmount(BigDecimal.valueOf(totalMembers).multiply(group.getMonthlyCollectionAmount()));
-                group_member.setAmountPaid(BigDecimal.ZERO);
-                group_member.setPaid(Boolean.FALSE);
-                group_member.setExpectedCollectionDate(collectionDate);
-                group_member.setExpectedAmount(group.getContributionAmount().multiply(BigDecimal.valueOf(totalMembers)));
-                group_member.setInterestAmountToReceive(BigDecimal.ZERO);
-                group_member.setInterestPaid(Boolean.FALSE);
-                group_member.setTotalAmountToReceive(group_member.getExpectedAmount());
-                group_member.setMonthlyInterestAmountPayback(BigDecimal.ZERO);
-                int number_of_schedules = totalMembers - level;
-                group_member.setNumberOfPaybackSchedules(number_of_schedules);
-                group_member.setInterestAmountToPayback(BigDecimal.ZERO);
-                Date schedule_start_date = collectionDate;
-                all_schedules = new ArrayList<>();
-
-                if (number_of_schedules > 0) {
-                    for (int i = 0; i < number_of_schedules; i++) {
-
-                        EsusuRepaymentSchedule schedule = new EsusuRepaymentSchedule();
-                        Date payableDate = dateUtility.addToDate(schedule_start_date, 1, frequencyId);
-
-                        schedule.setEsusuGroup(group);
-                        schedule.setEsusuGroupMembers(group_member);
-                        schedule.setInterestAmount(BigDecimal.ZERO);
-                        schedule.setMemberProfile((MemberProfile) daoService.getEntity(MemberProfile.class, egm.getMemberProfileId()));
-                        schedule.setPaid(Boolean.FALSE);
-                        schedule.setPrincipalAmount(group.getContributionAmount());
-                        schedule.setRepaymentDate(payableDate);
-                        schedule.setTotalAmount(schedule.getPrincipalAmount().add(schedule.getInterestAmount()));
-                        all_schedules.add(schedule);
-                        schedule_start_date = payableDate;
+                    if (!repeating_ids.add(egm.getMemberProfileId())) {
+                        return ResponseEntity.badRequest()
+                                .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], is repeating, please remove duplicates."));
                     }
-                    records_to_create.put(group_member, all_schedules);
-                    //logger.info("level {},memberId {}, collection position {}", level, group_member.getMemberProfile().getId(), group_member.getCollectionPosition());
-                } else {
-                    records_to_create.put(group_member, null);
+
+                    if (!daoService.checkObjectExists(EsusuGroupMembers.class, egm.getId())) {
+                        return ResponseEntity.badRequest()
+                                .body(new ResponseInformation("The specified esusu group member id [" + egm.getId() + "], does not exist."));
+                    }
+
+                    if (!daoService.checkObjectExists(MemberProfile.class, egm.getMemberProfileId())) {
+                        return ResponseEntity.badRequest()
+                                .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], does not exist."));
+                    }
+
+                    if (egm.getCollectionPosition() == null || egm.getCollectionPosition() != level) {
+                        return ResponseEntity.badRequest()
+                                .body(new ResponseInformation("A collection position contains an illegal position number. "
+                                        + "It should be " + level + ", whereas it is " + egm.getCollectionPosition()));
+                    }
+                    monthlyInterestAmountToPayback = (group.getContributionAmount().multiply(BigDecimal.valueOf(interestRate_group))).divide(BigDecimal.valueOf(100), RoundingMode.HALF_EVEN);
+
+                    BigDecimal interest_available = ((BigDecimal.valueOf(level).subtract(BigDecimal.ONE)).multiply(BigDecimal.valueOf(interestRate_group)).multiply(group.getContributionAmount())).divide(BigDecimal.valueOf(100), RoundingMode.HALF_EVEN);
+                    BigDecimal operator_fee = ((interest_available).multiply(BigDecimal.valueOf(interestRate_operator))).divide(BigDecimal.valueOf(100), RoundingMode.HALF_EVEN);
+                    BigDecimal interest_to_receive = interest_available.subtract(operator_fee);
+                    logger.info("level {}, available interest {}, operator fee {}, interest to receive {} ",
+                            level, interest_available, operator_fee, interest_to_receive);
+
+                    EsusuGroupMembers group_member = (EsusuGroupMembers) daoService.getEntity(EsusuGroupMembers.class, egm.getId());
+                    group_member.setCollectionPosition(String.valueOf(egm.getCollectionPosition()));
+                    group_member.setExpectedAmount(BigDecimal.valueOf(totalMembers).multiply(group.getMonthlyCollectionAmount()));
+                    group_member.setAmountPaid(BigDecimal.ZERO);
+                    group_member.setPaid(Boolean.FALSE);
+                    group_member.setExpectedCollectionDate(collectionDate);
+                    group_member.setExpectedAmount(group.getContributionAmount().multiply(BigDecimal.valueOf(totalMembers)));
+                    group_member.setInterestAmountToReceive(interest_to_receive);
+                    group_member.setInterestPaid(Boolean.FALSE);
+                    group_member.setTotalAmountToReceive(group_member.getExpectedAmount().add(interest_to_receive));
+                    group_member.setMonthlyInterestAmountPayback(monthlyInterestAmountToPayback);
+                    int number_of_schedules = totalMembers - level;
+                    group_member.setNumberOfPaybackSchedules(number_of_schedules);
+                    group_member.setInterestAmountToPayback(monthlyInterestAmountToPayback.multiply(BigDecimal.valueOf(number_of_schedules)));
+                    Date schedule_start_date = collectionDate;
+                    all_schedules = new ArrayList<>();
+
+                    if (number_of_schedules > 0) {
+                        for (int i = 0; i < number_of_schedules; i++) {
+
+                            EsusuRepaymentSchedule schedule = new EsusuRepaymentSchedule();
+                            Date payableDate = dateUtility.addToDate(schedule_start_date, 1, frequencyId);
+
+                            schedule.setEsusuGroup(group);
+                            schedule.setEsusuGroupMembers(group_member);
+                            schedule.setInterestAmount(monthlyInterestAmountToPayback);
+                            schedule.setMemberProfile((MemberProfile) daoService.getEntity(MemberProfile.class, egm.getMemberProfileId()));
+                            schedule.setPaid(Boolean.FALSE);
+                            schedule.setPrincipalAmount(group.getContributionAmount());
+                            schedule.setRepaymentDate(payableDate);
+                            schedule.setTotalAmount(schedule.getPrincipalAmount().add(schedule.getInterestAmount()));
+                            all_schedules.add(schedule);
+                            schedule_start_date = payableDate;
+                        }
+                        records_to_create.put(group_member, all_schedules);
+                        //logger.info("level {},memberId {}, collection position {}", level, group_member.getMemberProfile().getId(), group_member.getCollectionPosition());
+                    } else {
+                        records_to_create.put(group_member, null);
+                    }
+
+                    level++;
+                    newStartDate = collectionDate;
                 }
 
-                level++;
-                newStartDate = collectionDate;
+            } else {//not with interest
+                List<EsusuRepaymentSchedule> all_schedules;
+
+                Date newStartDate = startDate;
+                for (EsusuGroupMemberDto egm : dto.getGroupMembers()) {
+                    Date collectionDate = dateUtility.addToDate(newStartDate, 1, frequencyId);
+
+                    if (!repeating_ids.add(egm.getMemberProfileId())) {
+                        return ResponseEntity.badRequest()
+                                .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], is repeating, please remove duplicates."));
+                    }
+
+                    if (!daoService.checkObjectExists(EsusuGroupMembers.class, egm.getId())) {
+                        return ResponseEntity.badRequest()
+                                .body(new ResponseInformation("The specified esusu group member id [" + egm.getId() + "], does not exist."));
+                    }
+
+                    if (!daoService.checkObjectExists(MemberProfile.class, egm.getMemberProfileId())) {
+                        return ResponseEntity.badRequest()
+                                .body(new ResponseInformation("The specified member id [" + egm.getMemberProfileId() + "], does not exist."));
+                    }
+
+                    if (egm.getCollectionPosition() == null || egm.getCollectionPosition() != level) {
+                        return ResponseEntity.badRequest()
+                                .body(new ResponseInformation("A collection position contains an illegal position number. "
+                                        + "It should be " + level + ", whereas it is " + egm.getCollectionPosition()));
+                    }
+
+                    EsusuGroupMembers group_member = (EsusuGroupMembers) daoService.getEntity(EsusuGroupMembers.class, egm.getId());
+                    group_member.setCollectionPosition(String.valueOf(egm.getCollectionPosition()));
+                    group_member.setExpectedAmount(BigDecimal.valueOf(totalMembers).multiply(group.getMonthlyCollectionAmount()));
+                    group_member.setAmountPaid(BigDecimal.ZERO);
+                    group_member.setPaid(Boolean.FALSE);
+                    group_member.setExpectedCollectionDate(collectionDate);
+                    group_member.setExpectedAmount(group.getContributionAmount().multiply(BigDecimal.valueOf(totalMembers)));
+                    group_member.setInterestAmountToReceive(BigDecimal.ZERO);
+                    group_member.setInterestPaid(Boolean.FALSE);
+                    group_member.setTotalAmountToReceive(group_member.getExpectedAmount());
+                    group_member.setMonthlyInterestAmountPayback(BigDecimal.ZERO);
+                    int number_of_schedules = totalMembers - level;
+                    group_member.setNumberOfPaybackSchedules(number_of_schedules);
+                    group_member.setInterestAmountToPayback(BigDecimal.ZERO);
+                    Date schedule_start_date = collectionDate;
+                    all_schedules = new ArrayList<>();
+
+                    if (number_of_schedules > 0) {
+                        for (int i = 0; i < number_of_schedules; i++) {
+
+                            EsusuRepaymentSchedule schedule = new EsusuRepaymentSchedule();
+                            Date payableDate = dateUtility.addToDate(schedule_start_date, 1, frequencyId);
+
+                            schedule.setEsusuGroup(group);
+                            schedule.setEsusuGroupMembers(group_member);
+                            schedule.setInterestAmount(BigDecimal.ZERO);
+                            schedule.setMemberProfile((MemberProfile) daoService.getEntity(MemberProfile.class, egm.getMemberProfileId()));
+                            schedule.setPaid(Boolean.FALSE);
+                            schedule.setPrincipalAmount(group.getContributionAmount());
+                            schedule.setRepaymentDate(payableDate);
+                            schedule.setTotalAmount(schedule.getPrincipalAmount().add(schedule.getInterestAmount()));
+                            all_schedules.add(schedule);
+                            schedule_start_date = payableDate;
+                        }
+                        records_to_create.put(group_member, all_schedules);
+                        //logger.info("level {},memberId {}, collection position {}", level, group_member.getMemberProfile().getId(), group_member.getCollectionPosition());
+                    } else {
+                        records_to_create.put(group_member, null);
+                    }
+
+                    level++;
+                    newStartDate = collectionDate;
+                }
             }
-        }
-        logger.info("total records to create {}", records_to_create.size());
-        if (dto.getPreview() != null && dto.getPreview()) {
-            ArrangeGroupMemberCollectionPositionWrapperDto wrapperDto = new ArrangeGroupMemberCollectionPositionWrapperDto();
-            List<ArrangeGroupMemberCollectionPositionDto> all_records_dto = new ArrayList<>();
+            logger.info("total records to create {}", records_to_create.size());
+            if (dto.getPreview() != null && dto.getPreview()) {
+                ArrangeGroupMemberCollectionPositionWrapperDto wrapperDto = new ArrangeGroupMemberCollectionPositionWrapperDto();
+                List<ArrangeGroupMemberCollectionPositionDto> all_records_dto = new ArrayList<>();
 
-            records_to_create.forEach((key, value) -> {
-                ArrangeGroupMemberCollectionPositionDto each_record = new ArrangeGroupMemberCollectionPositionDto();
-                List<EsusuRepaymentScheduleDto> scheduleListDto = new ArrayList<>();
-                EsusuGroupMemberDto groupMemberDto = modelMapping.esusuGroupMemberToDto(key);
-                if (value != null) {
-                    value.stream().forEach(schedule -> {
-                        EsusuRepaymentScheduleDto scheduleDto = modelMapping.EsusuRepaymentScheduleToDto(schedule);
-                        scheduleListDto.add(scheduleDto);
-                    });
-                    each_record.setEsusuGroupMemberDTO(groupMemberDto);
-                    each_record.setSchedules(scheduleListDto);
-                    all_records_dto.add(each_record);
-                } else {
-                    each_record.setEsusuGroupMemberDTO(groupMemberDto);
-                    all_records_dto.add(each_record);
-                }
+                records_to_create.forEach((key, value) -> {
+                    ArrangeGroupMemberCollectionPositionDto each_record = new ArrangeGroupMemberCollectionPositionDto();
+                    List<EsusuRepaymentScheduleDto> scheduleListDto = new ArrayList<>();
+                    EsusuGroupMemberDto groupMemberDto = modelMapping.esusuGroupMemberToDto(key);
+                    if (value != null) {
+                        value.stream().forEach(schedule -> {
+                            EsusuRepaymentScheduleDto scheduleDto = modelMapping.EsusuRepaymentScheduleToDto(schedule);
+                            scheduleListDto.add(scheduleDto);
+                        });
+                        each_record.setEsusuGroupMemberDTO(groupMemberDto);
+                        each_record.setSchedules(scheduleListDto);
+                        all_records_dto.add(each_record);
+                    } else {
+                        each_record.setEsusuGroupMemberDTO(groupMemberDto);
+                        all_records_dto.add(each_record);
+                    }
 
-            });
-            //wrapperDto.setRecords(all_records_dto);
-            all_records_dto.sort((p1, p2) -> (p1.getEsusuGroupMemberDTO().getCollectionPosition() - p2.getEsusuGroupMemberDTO().getCollectionPosition()));
-            return ResponseEntity.ok(all_records_dto);
-        }
-        group.setPositionArranged(Boolean.TRUE);
-        boolean created = memberService.arrangeEsusGroupCollection(records_to_create, group);
+                });
+                //wrapperDto.setRecords(all_records_dto);
+                all_records_dto.sort((p1, p2) -> (p1.getEsusuGroupMemberDTO().getCollectionPosition() - p2.getEsusuGroupMemberDTO().getCollectionPosition()));
+                return ResponseEntity.ok(all_records_dto);
+            }
+            group.setPositionArranged(Boolean.TRUE);
+            boolean created = memberService.arrangeEsusGroupCollection(records_to_create, group);
 
-        if (!created) {
+            if (!created) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("Unable to persist changes due to error, "
+                                + "Please contact Administrator"));
+            }
+            return ResponseEntity.ok(new ResponseInformation("Successful"));
+        } catch (Exception ex) {
+            logger.info("An exception has been thrown while processing thrift collection dates, error is {} ", ex.getMessage());
             return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("Unable to persist changes due to error, "
-                            + "Please contact Administrator"));
+                    .body(new ResponseInformation("Internal server error. please contact the admin."));
         }
-        return ResponseEntity.ok(new ResponseInformation("Successful"));
+
     }
 
     public ResponseEntity<?> viewAllEsusuGroup() throws Exception {
@@ -1239,7 +1277,7 @@ public class RequestLogic {
 
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         List<EsusuGroupDTO> list_out = new ArrayList<>();
-        //List<EsusuGroup> all_groups = daoService.getAllEntityRecords(EsusuGroup.class);
+        //List<EsusuGroup> all_trans = daoService.getAllEntityRecords(EsusuGroup.class);
         logger.info("gone to db");
         List<EsusuGroup> all_groups = memberService.retrieveAllGroups();
         logger.info("back from db with {} ", all_groups.size());
@@ -1282,7 +1320,8 @@ public class RequestLogic {
 
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         List<EsusuGroupDTO> list_out = new ArrayList<>();
-        List<EsusuGroup> all_groups = daoService.getAllEntityRecords(EsusuGroup.class);
+        List<EsusuGroup> all_groups = memberService.viewEsusuGroupByCreator(initiator.getUsername());
+        System.out.println("total records found:::" + all_groups.size());
         if (all_groups.isEmpty()) {
             return ResponseEntity.ok(new ResponseInformation("No record found"));
         }
@@ -1590,14 +1629,17 @@ public class RequestLogic {
                     .body(new ResponseInformation("The specified member does not exist. "
                             + "You cannot carry out this function"));
         }
-        MemberProfile memberProfile = (MemberProfile) daoService.getEntity(MemberProfile.class, memberProfileId);
-
-        BigDecimal compulsoryBalance = memberService.getMemberWalletBalance(memberProfileId);
-        BalanceDTO dto = new BalanceDTO();
-        if (compulsoryBalance == null) {
-            compulsoryBalance = new BigDecimal(0.0);
+        if (!memberService.checkMemberHasWallet(memberProfileId)) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The specified member does not have a wallet yet, please contact the admin."));
         }
-        dto.setWalletBalance(compulsoryBalance);
+        //MemberProfile memberProfile = (MemberProfile) daoService.getEntity(MemberProfile.class, memberProfileId);
+        MemberWallet wallet = memberService.getMemberWallet(memberProfileId);
+        Transaction last_trans = memberService.getMemberLastTransaction(memberProfileId);
+        //BigDecimal compulsoryBalance = memberService.getMemberWalletBalance(memberProfileId);
+        BalanceDTO dto = new BalanceDTO();
+        dto.setWalletBalance(wallet.getBalance());
+        dto.setBalanceAsAt(formatter.format(last_trans.getTransactionDate()));
 
         return ResponseEntity.ok(dto);
     }
@@ -1714,7 +1756,7 @@ public class RequestLogic {
         }
         return ResponseEntity.ok(list_out);
     }
-    
+
     public ResponseEntity<?> searchForMembers(String searchTerm, Integer pageNumber, Integer pageSize) throws Exception {
 
         List<MemberProfileDTO> memberDTOs = new ArrayList<>();
@@ -1725,5 +1767,127 @@ public class RequestLogic {
         }
 
         return ResponseEntity.ok(memberDTOs);
+    }
+
+    public ResponseEntity<?> captureMemberContributionCardPayment(MemberContributionCardPaymentDTO request, BindingResult result) throws Exception {
+        if (result.hasFieldErrors()) {
+            String errors = result.getFieldErrors().stream()
+                    .map(p -> p.getDefaultMessage()).collect(Collectors.joining("\n"));
+            return ResponseEntity.badRequest().body(new ResponseInformation("An error occured while trying to persist information: " + errors));
+        }
+
+        try {
+            MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+            if (!daoService.checkObjectExists(MemberProfile.class, request.getMemberProfileId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified member id is invalid."));
+            }
+            if (!Objects.equals(initiator.getId(), request.getMemberProfileId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("You are not authorised to perform this operation on someone's account."));
+            }
+            if (!daoService.checkObjectExists(EsusuGroup.class, request.getEsusuGroupId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified esusu group id is invalid."));
+            }
+            if (!memberService.checkMemberHasWallet(request.getMemberProfileId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified member does not have a wallet yet, please create one before you can proceed."));
+            }
+            if (request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The amount must be greater than zero"));
+            }
+
+            EsusuGroup group = (EsusuGroup) daoService.getEntity(EsusuGroup.class, request.getEsusuGroupId());
+            TransactionType type = (TransactionType) daoService.getEntity(TransactionType.class, 1);
+            if (request.getAmount().compareTo(group.getContributionAmount()) < 0) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The amount must be same with the group contribution amount."));
+            }
+            Transaction transaction = new Transaction();
+            transaction.setAmount(request.getAmount());
+            transaction.setAmountInAndOut(request.getAmount());
+            transaction.setEsusuGroup(group);
+            transaction.setIsAutoDebit(false);
+            transaction.setIsCardPayment(true);
+            transaction.setIsEsusuContribution(true);
+            transaction.setIsTargetSavings(false);
+            transaction.setMemberProfile(initiator);
+            transaction.setTransactionDate(new Date());
+            transaction.setTransactionReference(request.getTransactionReference());
+            transaction.setTransactionType(type);//credit transaction
+
+            MemberWallet wallet = memberService.getMemberWallet(request.getMemberProfileId());
+            BigDecimal currentBal = wallet.getBalance();
+            BigDecimal newBal = currentBal.add(request.getAmount());
+            wallet.setBalance(newBal);
+            System.out.println("here::");
+            boolean created = memberService.captureMemberMonthlyContributionCardPayment(transaction, wallet);
+            System.out.println("here2::" + created);
+            if (!created) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("Unable to credit member wallet due to error, "
+                                + "Please contact Administrator"));
+            }
+            return ResponseEntity.ok(new ResponseInformation("Successful"));
+        } catch (Exception ex) {
+            logger.error("An error occured while saving member contribution via card payment. ", ex);
+        }
+        return null;
+    }
+
+    public ResponseEntity<?> viewUserTransactionHistory(int memberProfileId, int groupId) throws Exception {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyy-MM-dd");
+        MemberProfile initiator = memberService.getUserInformation(authenticationFacade.getAuthentication().getName());
+        List<TransactionDTO> list_out = new ArrayList<>();
+
+        try {
+            if (!daoService.checkObjectExists(MemberProfile.class, memberProfileId)) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified member id is invalid."));
+            }
+            if (!daoService.checkObjectExists(EsusuGroup.class, groupId)) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseInformation("The specified group id is invalid."));
+            }
+            EsusuGroup group = (EsusuGroup) daoService.getEntity(EsusuGroup.class, groupId);
+            List<Transaction> all_trans = memberService.viewUserTransactions(memberProfileId);
+
+            if (all_trans.isEmpty()) {
+                return ResponseEntity.ok(new ResponseInformation("No record found"));
+            }
+
+            all_trans.stream().forEach(inv -> {
+                TransactionDTO dto = new TransactionDTO();
+
+                dto.setId(inv.getId());
+                dto.setAmount(inv.getAmount());
+                dto.setAmountInAndOut(inv.getAmountInAndOut());
+                dto.setAutoDebit(inv.getIsAutoDebit());
+                dto.setCardPayment(inv.getIsCardPayment());
+                dto.setEsusuContribution(inv.getIsEsusuContribution());
+                dto.setEsusuGroupId(groupId);
+                dto.setEsusuGroupName(group.getName());
+                dto.setMemberName(initiator.getName());
+                dto.setMemberProfileId(memberProfileId);
+                dto.setTransactionDate(formatter.format(inv.getTransactionDate()));
+                try {
+                    dto.setTransactionType(((TransactionType) daoService.getEntity(TransactionType.class, inv.getTransactionType().getId())).getName());
+                } catch (Exception ex) {
+                    java.util.logging.Logger.getLogger(RequestLogic.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                dto.setTransactionTypeId(inv.getTransactionType().getId());
+                dto.setUsername(initiator.getUsername());
+                list_out.add(dto);
+            });
+        } catch (Exception ex) {
+            logger.error("An error occured while querying member transactions history. ", ex);
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("An error occurred, "
+                            + "Please contact Administrator"));
+        }
+
+        return ResponseEntity.ok(list_out);
     }
 }

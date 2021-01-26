@@ -116,7 +116,8 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
                 
                 loginGeniuneFail = true;
                 loginGeniuneFailMessage = username + "'s password is incorrect";
-                throw new BadCredentialsException(loginGeniuneFailMessage);
+                throw new UsernameNotFoundException(loginGeniuneFailMessage);
+                //throw new BadCredentialsException(loginGeniuneFailMessage);
             }
         } catch (Exception ex) {
             if (loginGeniuneFail) {

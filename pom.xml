@@ -263,11 +263,11 @@
         
         <!--         MS SQL JDBC for local -->
           
-        <!--<dependency>
+<!--        <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>5.1.6</version>
-        </dependency>-->  
+        </dependency>  -->
         
         <!-- MS SQL JDBC for digitalocean -->
         <dependency>
