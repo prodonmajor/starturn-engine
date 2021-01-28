@@ -10,6 +10,12 @@ scheduler:
 
 server:
     port: 8080
+    ssl:
+        key-store: classpath:starturn-https.jks
+        key-store-password: Password@1
+        key-store-type: JKS
+        key-alias: starturn-https
+        key-password: Password@1
 
 # File Storage Properties
 # All files uploaded through the REST API will be stored in this directory
