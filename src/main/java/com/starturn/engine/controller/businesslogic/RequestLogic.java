@@ -37,6 +37,7 @@ import com.starturn.engine.models.MemberContributionCardPaymentDTO;
 import com.starturn.engine.models.MemberProfileDTO;
 import com.starturn.engine.models.MemberProfilePictureDTO;
 import com.starturn.engine.models.MemberWalletDto;
+import com.starturn.engine.models.TokenRequestDTO;
 import com.starturn.engine.models.TransactionDTO;
 import com.starturn.engine.models.response.ErrorMessage;
 import com.starturn.engine.models.response.ResponseInformation;
@@ -141,10 +142,38 @@ public class RequestLogic {
                     .body(new ResponseInformation("The email address is registered in the system already."));
         }
 
-//        if (memberService.checkPhoneNumberExists(dto.getPhoneNumber())) {
-//            return ResponseEntity.badRequest()
-//                    .body(new ResponseInformation("The phone number is registered in the system already."));
-//        }
+        if (memberService.checkPhoneNumberExists(dto.getPhoneNumber())) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The phone number is registered in the system already."));
+        }
+        //token begins
+        if (!memberService.checkTokenExists(dto.getToken())) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The token does not exist"));
+        }
+        UserToken user_token = memberService.retrieveToken(dto.getToken());
+        
+        if (user_token.getValidated()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The token has been validated already."));
+        }
+        
+        long token_expired_minutes = util.getDateDiffInMins(user_token.getDateCreated());
+        if (token_expired_minutes > 5) {
+            user_token.setExpired(Boolean.TRUE);
+            daoService.saveUpdateEntity(user_token);
+        }
+
+        if (user_token.getExpired()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("The token has expired."));
+        }
+        
+        //update token
+        user_token.setValidated(true);
+        user_token.setDateValidated(new Date());
+        
+        //create member profile
         MemberProfile profile = modelMapping.dtoToMember(dto);
         profile.setAtmCardExpiry("");
         profile.setAtmCardNo("");
@@ -154,32 +183,29 @@ public class RequestLogic {
         profile.setBankAccountNumber("");
         profile.setBvn("");
         profile.setPassword(passwordEncoder.encode(dto.getPassword()));
-        UserToken token = new UserToken();
+        profile.setActive(Boolean.TRUE);
+        
+        //create wallet account
+        MemberWallet wallet = new MemberWallet();
+        wallet.setActive(Boolean.TRUE);
+        wallet.setBalance(BigDecimal.ZERO);
+        wallet.setCreatioDate(new Date());
+        wallet.setMemberProfile(profile);
 
-        token.setDateCreated(new Date());
-        token.setExpired(Boolean.FALSE);
-        token.setToken(util.getRandomNumberToken());
-        token.setUsername(profile.getUsername());
-        token.setValidated(Boolean.FALSE);
+//        token.setDateCreated(new Date());
+//        token.setExpired(Boolean.FALSE);
+//        token.setToken(util.getRandomNumberToken());
+//        token.setUsername(profile.getUsername());
+//        token.setValidated(Boolean.FALSE);
 
-        boolean created = memberService.userSignUp(profile, token);
+        boolean created = memberService.userSignUp(profile, user_token,wallet);
         if (!created) {
             return ResponseEntity.badRequest()
                     .body(new ResponseInformation("The database could not make the necessary change. "
                             + "Please contact Administrator"));
         }
 
-        String message = "Starturn confirmation token is " + token.getToken();
-
-        if (dto.getPhoneNumber() != null && !dto.getPhoneNumber().trim().isEmpty()) {
-            MessageDetails msgDetails = new MessageDetails();
-            msgDetails.setFrom("Starturn");
-            msgDetails.setTo(dto.getPhoneNumber());
-            msgDetails.setText(message);
-
-            smsAlert.sendSingleTextMessage(msgDetails);
-            logger.info("sent text message to: {} ", dto.getPhoneNumber());
-        }
+        String message = "Your Starturn account has been created successfully";
 
         if (dto.getEmailAddress() != null && !dto.getEmailAddress().trim().isEmpty()) {
             EmailPlaceholder placeHolder = new EmailPlaceholder();
@@ -188,7 +214,7 @@ public class RequestLogic {
             placeHolder.setCoop_name("Starturn");
             placeHolder.setUsername(dto.getUsername());
             placeHolder.setPassword(dto.getPassword());
-            placeHolder.setToken(token.getToken());
+            placeHolder.setToken(dto.getToken());
 
             EmailMessage msgDetails = new EmailMessage();
             msgDetails.setSubject("Starturn Esusu Signup");
@@ -198,7 +224,7 @@ public class RequestLogic {
             msgDetails.setPlaceholder(placeHolder);
 
             emailAlert.sendSingleEmailOffice365(msgDetails);
-            logger.info("sent email message to: {} ", dto.getEmailAddress());
+            logger.info("sending email message to: {} ", dto.getEmailAddress());
         }
         MemberProfile newProfile = memberService.getUserInformation(profile.getUsername());
         return ResponseEntity.ok(modelMapping.memberToDtoMapping(newProfile));
@@ -252,24 +278,33 @@ public class RequestLogic {
                     .body(new ResponseInformation("Unable to validate token, "
                             + "Please contact Administrator"));
         }
-
+        
         return ResponseEntity.ok(new ResponseInformation("successful"));
     }
 
-    public ResponseEntity<?> generateToken(String emailAddress) throws Exception {
-        if (!memberService.checkUserExists(emailAddress)) {//replace with email exists method
+    public ResponseEntity<?> generateToken(TokenRequestDTO request) throws Exception {
+//        if (!memberService.checkUserExists(emailAddress)) {//replace with email exists method
+//            return ResponseEntity.badRequest()
+//                    .body(new ResponseInformation("The email address does not exist in the system"));
+//        }
+        if (request.getPhoneNumber().trim().isEmpty()) {
             return ResponseEntity.badRequest()
-                    .body(new ResponseInformation("The email address does not exist in the system"));
+                    .body(new ResponseInformation("Phone number is required."));
+        }
+        
+        if (request.getName().trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("Name is required."));
         }
 
-        MemberProfile memberProfile = memberService.getUserInformation(emailAddress);
+        //MemberProfile memberProfile = memberService.getUserInformation(emailAddress);
         UserToken user_token = new UserToken();
 
-        user_token.setMemberProfile(memberProfile);
+        //user_token.setMemberProfile(memberProfile);
         user_token.setDateCreated(new Date());
         user_token.setExpired(Boolean.FALSE);
         user_token.setToken(util.getRandomNumberToken());
-        user_token.setUsername(emailAddress);
+        user_token.setUsername(request.getEmailAddress());
         user_token.setValidated(false);
 
         boolean saved = daoService.saveUpdateEntity(user_token);
@@ -280,25 +315,24 @@ public class RequestLogic {
         }
 
         String message = "Starturn confirmation token is " + user_token.getToken();
-
-        if (memberProfile.getPhoneNumber() != null && !memberProfile.getPhoneNumber().trim().isEmpty()) {
+        if (!request.getPhoneNumber().trim().isEmpty()) {
             MessageDetails msgDetails = new MessageDetails();
             msgDetails.setFrom("Eazcoopdemo");
-            msgDetails.setTo(memberProfile.getPhoneNumber());
+            msgDetails.setTo(request.getPhoneNumber());
             msgDetails.setText(message);
 
             smsAlert.sendSingleTextMessage(msgDetails);
         }
 
-        if (memberProfile.getEmailAddress() != null && !memberProfile.getEmailAddress().trim().isEmpty()) {
+        if (request.getEmailAddress().trim().isEmpty()) {
             EmailPlaceholder placeHolder = new EmailPlaceholder();
-            placeHolder.setFirst_name(memberProfile.getName());
+            placeHolder.setFirst_name(request.getName());
             placeHolder.setLast_name("");
             placeHolder.setCoop_name("Starturn");
 
             EmailMessage msgDetails = new EmailMessage();
             msgDetails.setSubject("Account Validation Token");
-            msgDetails.setTo_email(memberProfile.getEmailAddress());
+            msgDetails.setTo_email(request.getEmailAddress());
             msgDetails.setEmailBody(message);
             msgDetails.setPlaceholder(placeHolder);
 

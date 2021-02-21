@@ -8,6 +8,7 @@ package com.starturn.engine.controller;
 import com.starturn.engine.controller.businesslogic.RequestLogic;
 import com.starturn.engine.models.MemberProfileDTO;
 import com.starturn.engine.models.MemberProfilePictureDTO;
+import com.starturn.engine.models.TokenRequestDTO;
 import com.starturn.engine.models.response.ResponseInformation;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -62,10 +63,12 @@ public class NonAuthController {
         @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
     })
     public ResponseEntity<?> validateToken(@RequestParam(value = "token", required = true) String token) throws Exception {
-        return logic.validateToken(token);
+        //return logic.validateToken(token);
+        return ResponseEntity.badRequest()
+                    .body(new ResponseInformation("You are not allowed to use this service again."));
     }
 
-    @GetMapping("/generatetoken")
+    @PostMapping("/generatetoken")
     @ApiOperation(value = "Token generation")
     @ApiResponses(value = {
         @ApiResponse(code = 200, message = "successful", response = ResponseInformation.class)
@@ -74,8 +77,8 @@ public class NonAuthController {
         ,
         @ApiResponse(code = 500, message = "internal error from database or other system functions - critical!", response = ResponseInformation.class)
     })
-    public ResponseEntity<?> generateToken(@RequestParam(value = "email", required = true) String emailAddress) throws Exception {
-        return logic.generateToken(emailAddress);
+    public ResponseEntity<?> generateToken(@Valid @RequestBody TokenRequestDTO request) throws Exception {
+        return logic.generateToken(request);
     }
 
     @GetMapping("/resetpassword")

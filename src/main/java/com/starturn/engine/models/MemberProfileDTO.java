@@ -45,5 +45,6 @@ public class MemberProfileDTO {
     private String lastLoginTime;
     //@NotNull(message = "date of birth cannot be null")
     private String dob;
+    private String token;
     
 }

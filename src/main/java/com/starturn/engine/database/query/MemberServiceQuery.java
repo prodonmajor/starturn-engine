@@ -56,10 +56,11 @@ public interface MemberServiceQuery {
      *
      * @param profile the user details
      * @param token the user account activation token
+     * @param wallet the user wallet account
      * @return true, if sign up is successful
      * @throws Exception
      */
-    public boolean userSignUp(MemberProfile profile, UserToken token) throws Exception;
+    public boolean userSignUp(MemberProfile profile, UserToken token,MemberWallet wallet) throws Exception;
 
     /**
      * Checks if a token exists.

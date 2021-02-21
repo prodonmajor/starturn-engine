@@ -130,7 +130,7 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
     }
 
     @Override
-    public boolean userSignUp(MemberProfile profile, UserToken token) throws Exception {
+    public boolean userSignUp(MemberProfile profile, UserToken token,MemberWallet wallet) throws Exception {
         HibernateDataAccess dao = new HibernateDataAccess();
         boolean saved = false;
         try {
@@ -140,6 +140,9 @@ public class MemberServiceQueryImpl implements MemberServiceQuery {
 
             token.setMemberProfile(profile);
             dao.createUpdateObject(token);
+            
+            wallet.setMemberProfile(profile);
+            dao.createUpdateObject(wallet);
 
             dao.commit();
             saved = true;
